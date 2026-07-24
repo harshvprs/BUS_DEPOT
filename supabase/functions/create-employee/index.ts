@@ -28,7 +28,10 @@ serve(async (req) => {
     const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
       type: 'invite',
       email,
-      data: { role: 'employee', employee_id, name }
+      data: { role: 'employee', employee_id, name },
+      options: {
+        redirectTo: 'https://busdepot.gramoora.com/employee/settings'
+      }
     })
 
     if (linkErr) throw linkErr
