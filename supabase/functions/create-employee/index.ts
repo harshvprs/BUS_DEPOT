@@ -37,7 +37,10 @@ serve(async (req) => {
     }
 
     // 2. Send the email directly via Resend API (bypassing Supabase SMTP issues)
-    const RESEND_API_KEY = "re_XPk9tc8W_8MD21rLUaJfWGLLDNdJykj9a"; // Hardcoded to bypass Supabase CLI secrets issue for now
+    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+    if (!RESEND_API_KEY) {
+      throw new Error("RESEND_API_KEY is missing from Edge Function Secrets!");
+    }
     const actionLink = linkData.properties.action_link;
     
     const emailRes = await fetch('https://api.resend.com/emails', {
