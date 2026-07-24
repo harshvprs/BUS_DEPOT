@@ -7,7 +7,7 @@ export default function Employees() {
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: '', employee_id: '', phone: '', password: '' });
+  const [form, setForm] = useState({ name: '', employee_id: '', phone: '', email: '' });
   const [routes, setRoutes] = useState([]);
   const [showRoutes, setShowRoutes] = useState(false);
   const [routeForm, setRouteForm] = useState({ route_name: '', route_code: '', required_staff_count: 2 });
@@ -43,28 +43,33 @@ export default function Employees() {
       if (editing) {
         await supabase.from('profiles').update({ name: form.name, phone: form.phone }).eq('id', editing.id);
       } else {
-        // Create auth user (might auto-login, but for demo we proceed)
-        const email = `${form.employee_id.toLowerCase()}@busdepot.com`;
-        const { data: authData, error: authErr } = await supabase.auth.signUp({
-          email,
-          password: form.password
+        const { data, error } = await supabase.functions.invoke('create-employee', {
+          body: {
+            email: form.email,
+            name: form.name,
+            employee_id: form.employee_id,
+            phone: form.phone
+          }
         });
-        if (authErr) throw authErr;
-        
-        await supabase.from('profiles').insert({
-          id: authData.user.id,
-          name: form.name,
-          employee_id: form.employee_id,
-          phone: form.phone,
-          role: 'employee'
-        });
+        if (error) {
+          let errorMessage = error.message;
+          if (error.context) {
+            try {
+              const contextJson = await error.context.json();
+              if (contextJson.error) errorMessage = contextJson.error;
+            } catch (e) {}
+          }
+          throw new Error(errorMessage || 'Failed to invoke edge function');
+        }
+        if (data?.error) throw new Error(data.error);
       }
       setShowModal(false);
       setEditing(null);
-      setForm({ name: '', employee_id: '', phone: '', password: '' });
+      setForm({ name: '', employee_id: '', phone: '', email: '' });
       load();
     } catch (err) {
-      alert(err.message || 'Failed to save employee');
+      console.error("Full error:", err);
+      alert(typeof err.message === 'object' ? JSON.stringify(err.message) : (err.message || 'Failed to save employee'));
     }
   }
 
@@ -75,7 +80,7 @@ export default function Employees() {
 
   function openEdit(emp) {
     setEditing(emp);
-    setForm({ name: emp.name, employee_id: emp.employee_id, phone: emp.phone || '', password: '' });
+    setForm({ name: emp.name, employee_id: emp.employee_id, phone: emp.phone || '', email: '' });
     setShowModal(true);
   }
 
@@ -106,7 +111,7 @@ export default function Employees() {
           <button onClick={() => setShowRoutes(true)}
             className={`btn ${showRoutes ? 'btn-secondary' : 'btn-ghost'}`}>Routes</button>
           {!showRoutes && (
-            <button onClick={() => { setEditing(null); setForm({ name: '', employee_id: '', phone: '', password: '' }); setShowModal(true); }}
+            <button onClick={() => { setEditing(null); setForm({ name: '', employee_id: '', phone: '', email: '' }); setShowModal(true); }}
               className="btn btn-primary"><Plus size={16} /> Add Employee</button>
           )}
         </div>
@@ -234,8 +239,8 @@ export default function Employees() {
               </div>
               {!editing && (
                 <div>
-                  <label className="label">Password</label>
-                  <input className="input" type="password" required value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
+                  <label className="label">Email Address</label>
+                  <input className="input" type="email" required placeholder="employee@example.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
                 </div>
               )}
               <div className="flex gap-3 pt-2">

@@ -55,8 +55,8 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="label">Employee ID</label>
-              <input type="text" className="input" placeholder="e.g. ADMIN001 or EMP001"
+              <label className="label">Employee ID or Email</label>
+              <input type="text" className="input" placeholder="e.g. EMP001 or email@example.com"
                 value={employeeId} onChange={e => setEmployeeId(e.target.value)} required autoFocus />
             </div>
 

@@ -17,6 +17,7 @@ import QRScan from './pages/employee/QRScan';
 import Shifts from './pages/employee/Shifts';
 import Leave from './pages/employee/Leave';
 import Notifications from './pages/employee/Notifications';
+import Settings from './pages/employee/Settings';
 
 export default function App() {
   return (
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="shifts" element={<Shifts />} />
             <Route path="leave" element={<Leave />} />
             <Route path="notifications" element={<Notifications />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
 
           {/* QR scan is a full-screen page outside the layout */}

@@ -6,6 +6,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   useEffect(() => {
     // Check active sessions and sets the user
@@ -14,6 +15,7 @@ export function AuthProvider({ children }) {
         fetchProfile(session.user);
       } else {
         setLoading(false);
+        setInitialLoad(false);
       }
     });
 
@@ -24,6 +26,7 @@ export function AuthProvider({ children }) {
       } else {
         setUser(null);
         setLoading(false);
+        setInitialLoad(false);
       }
     });
 
@@ -45,14 +48,31 @@ export function AuthProvider({ children }) {
       setUser(null);
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
   };
 
-  const login = async (employee_id, password) => {
+  const login = async (identifier, password) => {
     setLoading(true);
     try {
-      // We map employee_id to a dummy email for Supabase auth
-      const email = `${employee_id.toLowerCase()}@busdepot.com`;
+      let email = identifier;
+      
+      // If the identifier doesn't look like an email, assume it's an employee ID
+      if (!identifier.includes('@')) {
+        const { data: profile, error: lookupErr } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('employee_id', identifier)
+          .single();
+          
+        if (lookupErr || !profile?.email) {
+           // Fallback to the old dummy logic just in case it's an older account
+           email = `${identifier.toLowerCase()}@busdepot.com`;
+        } else {
+           email = profile.email;
+        }
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -67,7 +87,9 @@ export function AuthProvider({ children }) {
         .single();
         
       if (profileError) throw profileError;
+      
       setUser({ ...data.user, ...profileData });
+      
       return profileData;
     } finally {
       setLoading(false);
@@ -81,7 +103,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{ user, login, logout, loading }}>
-      {!loading && children}
+      {!initialLoad && children}
     </AuthContext.Provider>
   );
 }

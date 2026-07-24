@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useState, useEffect } from 'react';
 
 import { supabase } from '../supabase';
-import { Home, CalendarDays, FileText, Bell, LogOut } from 'lucide-react';
+import { Home, CalendarDays, FileText, Bell, LogOut, Settings as SettingsIcon } from 'lucide-react';
 
 const tabs = [
   { to: '/employee/home', icon: Home, label: 'Home' },
@@ -45,10 +45,16 @@ export default function EmployeeLayout() {
           </div>
           <span className="font-semibold text-sm">DepotFlow</span>
         </div>
-        <button onClick={() => { logout(); navigate('/login'); }}
-          className="p-1.5 rounded-lg hover:bg-navy-800 transition-colors">
-          <LogOut size={18} className="text-navy-300" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button onClick={() => navigate('/employee/settings')}
+            className="p-1.5 rounded-lg hover:bg-navy-800 transition-colors">
+            <SettingsIcon size={18} className="text-navy-300" />
+          </button>
+          <button onClick={() => { logout(); navigate('/login'); }}
+            className="p-1.5 rounded-lg hover:bg-navy-800 transition-colors">
+            <LogOut size={18} className="text-navy-300" />
+          </button>
+        </div>
       </header>
 
       {/* Scrollable content */}
