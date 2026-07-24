@@ -67,6 +67,7 @@ export function AuthProvider({ children }) {
         .single();
         
       if (profileError) throw profileError;
+      setUser({ ...data.user, ...profileData });
       return profileData;
     } finally {
       setLoading(false);
