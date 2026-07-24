@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
-import { Users, Plus, Search, X, Edit2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Users, Plus, Search, X, Edit2, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
 
 export default function Employees() {
   const [employees, setEmployees] = useState([]);
@@ -76,6 +76,22 @@ export default function Employees() {
   async function toggleActive(emp) {
     await supabase.from('profiles').update({ is_active: !emp.is_active }).eq('id', emp.id);
     load();
+  }
+
+  async function deleteEmployee(emp) {
+    if (!window.confirm(`Are you sure you want to permanently delete ${emp.name} (${emp.employee_id})? This action cannot be undone.`)) return;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-employee', {
+        body: { employeeId: emp.id }
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      load();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete employee: ' + (err.message || 'Unknown error'));
+    }
   }
 
   function openEdit(emp) {
@@ -164,6 +180,9 @@ export default function Employees() {
                             ? <ToggleRight size={18} className="text-success-500" />
                             : <ToggleLeft size={18} className="text-gray-400" />
                           }
+                        </button>
+                        <button onClick={() => deleteEmployee(emp)} className="p-1.5 rounded-lg hover:bg-danger-50 text-danger-500" title="Delete">
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>
