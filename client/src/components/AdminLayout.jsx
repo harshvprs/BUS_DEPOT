@@ -1,7 +1,8 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect } from 'react';
-import api from '../api';
+
+import { supabase } from '../supabase';
 import { LayoutDashboard, Users, QrCode, CalendarClock, FileBarChart, ClipboardList, Bell, LogOut, Bus } from 'lucide-react';
 
 const navItems = [
@@ -28,27 +29,37 @@ export default function AdminLayout() {
 
   async function loadUnread() {
     try {
-      const { data } = await api.get('/notifications/unread-count');
-      setUnreadCount(data.count);
+      if (!user) return;
+      const { count } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false);
+      setUnreadCount(count || 0);
     } catch {}
   }
 
   async function toggleNotifs() {
-    if (!showNotifs) {
-      const { data } = await api.get('/notifications');
-      setNotifs(data);
+    if (!showNotifs && user) {
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      setNotifs(data || []);
     }
     setShowNotifs(!showNotifs);
   }
 
   async function markRead(id) {
-    await api.put(`/notifications/${id}/read`);
+    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
     setNotifs(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
     setUnreadCount(prev => Math.max(0, prev - 1));
   }
 
   async function markAllRead() {
-    await api.put('/notifications/read-all');
+    if (!user) return;
+    await supabase.from('notifications').update({ is_read: true }).eq('user_id', user.id).eq('is_read', false);
     setNotifs(prev => prev.map(n => ({ ...n, is_read: true })));
     setUnreadCount(0);
   }

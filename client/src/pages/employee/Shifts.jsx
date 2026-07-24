@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import api from '../../api';
+import { supabase } from '../../supabase';
+import { useAuth } from '../../context/AuthContext';
 import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Clock } from 'lucide-react';
 
 function getMonday(d) {
@@ -10,14 +11,33 @@ function getMonday(d) {
 }
 
 export default function MyShifts() {
+  const { user } = useAuth();
   const [weekStart, setWeekStart] = useState(getMonday(new Date()).toISOString().split('T')[0]);
   const [shifts, setShifts] = useState([]);
 
   useEffect(() => {
-    api.get('/schedule', { params: { week: weekStart } })
-      .then(({ data }) => setShifts(data.shifts))
-      .catch(console.error);
-  }, [weekStart]);
+    if (!user) return;
+    const fetchShifts = async () => {
+      try {
+        const endDate = new Date(new Date(weekStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const { data } = await supabase
+          .from('shifts')
+          .select('*, routes(route_name, route_code)')
+          .eq('employee_id', user.id)
+          .gte('date', weekStart)
+          .lte('date', endDate);
+          
+        setShifts((data || []).map(s => ({
+          ...s,
+          route_name: s.routes?.route_name,
+          route_code: s.routes?.route_code
+        })));
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchShifts();
+  }, [weekStart, user]);
 
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(new Date(weekStart).getTime() + i * 24 * 60 * 60 * 1000);

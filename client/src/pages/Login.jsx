@@ -18,7 +18,7 @@ export default function Login() {
       const user = await login(employeeId, password);
       navigate(user.role === 'admin' ? '/admin/dashboard' : '/employee/home');
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed');
+      setError(err.message || 'Login failed');
     }
   }
 

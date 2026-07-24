@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api from '../../api';
+import { supabase } from '../../supabase';
 import { CalendarClock, ChevronLeft, ChevronRight, Wand2, Upload, X } from 'lucide-react';
 
 function getMonday(d) {
@@ -25,15 +25,26 @@ export default function Schedule() {
   useEffect(() => { load(); }, [weekStart]);
 
   async function load() {
-    const [s, r, e] = await Promise.all([
-      api.get('/schedule', { params: { week: weekStart } }),
-      api.get('/routes'),
-      api.get('/employees'),
-    ]);
-    setShifts(s.data.shifts);
-    setRoutes(r.data);
-    setEmployees(e.data);
-    setSuggestions([]);
+    try {
+      const endOfWeek = new Date(new Date(weekStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const [shiftsRes, routesRes, empRes] = await Promise.all([
+        supabase.from('shifts').select('*, profiles(name)').gte('date', weekStart).lte('date', endOfWeek),
+        supabase.from('routes').select('*'),
+        supabase.from('profiles').select('*').eq('role', 'employee'),
+      ]);
+      
+      const mappedShifts = (shiftsRes.data || []).map(s => ({
+        ...s,
+        employee_name: s.profiles?.name
+      }));
+      
+      setShifts(mappedShifts);
+      setRoutes(routesRes.data || []);
+      setEmployees(empRes.data || []);
+      setSuggestions([]);
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -42,15 +53,41 @@ export default function Schedule() {
   });
 
   function getCell(routeId, date) {
-    // Check suggestions first
     const suggested = suggestions.filter(s => s.route_id === routeId && s.date === date);
     const assigned = shifts.filter(s => s.route_id === routeId && s.date === date);
     return { assigned, suggested };
   }
 
-  async function autoSuggest() {
-    const { data } = await api.post('/schedule/auto-suggest', { week: weekStart });
-    setSuggestions(data.suggestions);
+  function autoSuggest() {
+    const newSuggestions = [];
+    
+    // Basic mock algorithm for UI demo
+    for (const route of routes) {
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(new Date(weekStart).getTime() + i * 24 * 60 * 60 * 1000);
+        if (d.getDay() === 0) continue; // Sunday
+        const dateStr = d.toISOString().split('T')[0];
+        
+        const assignedCount = shifts.filter(s => s.route_id === route.id && s.date === dateStr).length;
+        let needed = route.required_staff_count - assignedCount;
+        
+        if (needed > 0) {
+          // find employees not assigned on this day
+          const available = employees.filter(emp => emp.is_active !== false && !shifts.find(s => s.employee_id === emp.id && s.date === dateStr) && !newSuggestions.find(s => s.employee_id === emp.id && s.date === dateStr));
+          for (let j = 0; j < needed && j < available.length; j++) {
+            newSuggestions.push({
+              route_id: route.id,
+              employee_id: available[j].id,
+              employee_name: available[j].name,
+              date: dateStr,
+              start_time: '06:00',
+              end_time: '14:00'
+            });
+          }
+        }
+      }
+    }
+    setSuggestions(newSuggestions);
   }
 
   async function publish() {
@@ -59,23 +96,29 @@ export default function Schedule() {
       route_id: s.route_id, employee_id: s.employee_id,
       date: s.date, start_time: s.start_time, end_time: s.end_time,
     }));
-    const { data } = await api.post('/schedule/publish', { shifts: toPublish });
-    alert(data.message);
-    load();
+    try {
+      const { error } = await supabase.from('shifts').insert(toPublish);
+      if (error) throw error;
+      alert('Schedule published successfully');
+      load();
+    } catch (err) {
+      alert(err.message || 'Failed to publish');
+    }
   }
 
   async function assignShift() {
     if (!showAssign || !assignEmp) return;
     try {
-      await api.post('/schedule/assign', {
-        route_id: showAssign.route_id, employee_id: parseInt(assignEmp),
+      const { error } = await supabase.from('shifts').insert({
+        route_id: showAssign.route_id, employee_id: assignEmp,
         date: showAssign.date, start_time: '06:00', end_time: '14:00',
       });
+      if (error) throw error;
       setShowAssign(null);
       setAssignEmp('');
       load();
     } catch (err) {
-      alert(err.response?.data?.error || 'Assignment failed');
+      alert(err.message || 'Assignment failed');
     }
   }
 

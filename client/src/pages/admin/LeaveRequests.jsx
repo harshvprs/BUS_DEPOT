@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api from '../../api';
+import { supabase } from '../../supabase';
 import { ClipboardList, Check, X, AlertTriangle } from 'lucide-react';
 
 export default function LeaveRequests() {
@@ -10,20 +10,39 @@ export default function LeaveRequests() {
   useEffect(() => { load(); }, [filter]);
 
   async function load() {
-    const { data } = await api.get('/leave', { params: filter ? { status: filter } : {} });
-    setLeaves(data);
+    try {
+      let query = supabase
+        .from('leave_requests')
+        .select('*, profiles(name, employee_id)')
+        .order('applied_on', { ascending: false });
+        
+      if (filter) query = query.eq('status', filter);
+      const { data } = await query;
+      
+      const formatted = (data || []).map(l => ({
+        ...l,
+        name: l.profiles?.name,
+        emp_id: l.profiles?.employee_id
+      }));
+      setLeaves(formatted);
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   async function handleAction(id, action) {
     const comment = action === 'reject' ? prompt('Rejection reason (optional):') : null;
+    const status = action === 'approve' ? 'approved' : 'rejected';
     try {
-      const { data } = await api.put(`/leave/${id}/${action}`, { admin_comment: comment });
-      if (data.warnings?.length) {
-        setWarnings(prev => ({ ...prev, [id]: data.warnings }));
-      }
+      const { error } = await supabase
+        .from('leave_requests')
+        .update({ status, admin_comment: comment })
+        .eq('id', id);
+        
+      if (error) throw error;
       load();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed');
+      alert(err.message || 'Failed');
     }
   }
 

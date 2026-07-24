@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api from '../../api';
+import { supabase } from '../../supabase';
 import { Users, Plus, Search, X, Edit2, ToggleLeft, ToggleRight } from 'lucide-react';
 
 export default function Employees() {
@@ -13,34 +13,63 @@ export default function Employees() {
   const [routeForm, setRouteForm] = useState({ route_name: '', route_code: '', required_staff_count: 2 });
 
   useEffect(() => { load(); loadRoutes(); }, []);
+  useEffect(() => { load(); }, [search]);
 
   async function load() {
-    const { data } = await api.get('/employees', { params: { search } });
-    setEmployees(data);
+    try {
+      let query = supabase.from('profiles').select('*').eq('role', 'employee');
+      if (search) {
+        query = query.or(`name.ilike.%${search}%,employee_id.ilike.%${search}%`);
+      }
+      const { data } = await query;
+      setEmployees(data || []);
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   async function loadRoutes() {
-    const { data } = await api.get('/routes');
-    setRoutes(data);
+    try {
+      const { data } = await supabase.from('routes').select('*');
+      setRoutes(data || []);
+    } catch (err) {
+      console.error(err);
+    }
   }
-
-  useEffect(() => { load(); }, [search]);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (editing) {
-      await api.put(`/employees/${editing.id}`, { name: form.name, phone: form.phone });
-    } else {
-      await api.post('/employees', form);
+    try {
+      if (editing) {
+        await supabase.from('profiles').update({ name: form.name, phone: form.phone }).eq('id', editing.id);
+      } else {
+        // Create auth user (might auto-login, but for demo we proceed)
+        const email = `${form.employee_id.toLowerCase()}@busdepot.com`;
+        const { data: authData, error: authErr } = await supabase.auth.signUp({
+          email,
+          password: form.password
+        });
+        if (authErr) throw authErr;
+        
+        await supabase.from('profiles').insert({
+          id: authData.user.id,
+          name: form.name,
+          employee_id: form.employee_id,
+          phone: form.phone,
+          role: 'employee'
+        });
+      }
+      setShowModal(false);
+      setEditing(null);
+      setForm({ name: '', employee_id: '', phone: '', password: '' });
+      load();
+    } catch (err) {
+      alert(err.message || 'Failed to save employee');
     }
-    setShowModal(false);
-    setEditing(null);
-    setForm({ name: '', employee_id: '', phone: '', password: '' });
-    load();
   }
 
   async function toggleActive(emp) {
-    await api.put(`/employees/${emp.id}`, { is_active: !emp.is_active });
+    await supabase.from('profiles').update({ is_active: !emp.is_active }).eq('id', emp.id);
     load();
   }
 
@@ -52,9 +81,13 @@ export default function Employees() {
 
   async function handleRouteSubmit(e) {
     e.preventDefault();
-    await api.post('/routes', routeForm);
-    setRouteForm({ route_name: '', route_code: '', required_staff_count: 2 });
-    loadRoutes();
+    try {
+      await supabase.from('routes').insert(routeForm);
+      setRouteForm({ route_name: '', route_code: '', required_staff_count: 2 });
+      loadRoutes();
+    } catch (err) {
+      alert(err.message || 'Failed to save route');
+    }
   }
 
   return (

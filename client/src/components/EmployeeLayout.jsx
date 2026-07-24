@@ -1,7 +1,8 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect } from 'react';
-import api from '../api';
+
+import { supabase } from '../supabase';
 import { Home, CalendarDays, FileText, Bell, LogOut } from 'lucide-react';
 
 const tabs = [
@@ -12,7 +13,7 @@ const tabs = [
 ];
 
 export default function EmployeeLayout() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -24,8 +25,13 @@ export default function EmployeeLayout() {
 
   async function loadUnread() {
     try {
-      const { data } = await api.get('/notifications/unread-count');
-      setUnreadCount(data.count);
+      if (!user) return;
+      const { count } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false);
+      setUnreadCount(count || 0);
     } catch {}
   }
 

@@ -10,6 +10,7 @@
     "db:init": "cd server && node db-init.js"
   },
   "dependencies": {
-    "concurrently": "^9.0.0"
+    "concurrently": "^9.0.0",
+    "dotenv": "^17.4.2"
   }
 }

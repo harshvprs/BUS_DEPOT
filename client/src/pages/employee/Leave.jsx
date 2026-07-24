@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../api';
+import { supabase } from '../../supabase';
+import { useAuth } from '../../context/AuthContext';
 import { FileText, Plus, Clock, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 
 export default function Leave() {
-  // eslint-disable-next-line no-unused-vars
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState('history'); // history | apply
   const [leaves, setLeaves] = useState([]);
@@ -12,24 +13,53 @@ export default function Leave() {
   const [form, setForm] = useState({ leave_type: 'Casual Leave', start_date: '', end_date: '', reason: '' });
   const [submitting, setSubmitting] = useState(false);
 
+  const fetchLeaveData = async () => {
+    if (!user) return;
+    try {
+      const { data: leavesData } = await supabase
+        .from('leave_requests')
+        .select('*')
+        .eq('employee_id', user.id)
+        .order('applied_on', { ascending: false });
+        
+      setLeaves(leavesData || []);
+
+      const { count: usedLeaves } = await supabase
+        .from('leave_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('employee_id', user.id)
+        .eq('status', 'approved');
+
+      setBalance({
+        used: usedLeaves || 0,
+        total: 12,
+        remaining: 12 - (usedLeaves || 0)
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
-    api.get('/leave').then(({ data }) => setLeaves(data));
-    api.get('/leave/balance').then(({ data }) => setBalance(data));
-  }, []);
+    fetchLeaveData();
+  }, [user]);
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!user) return;
     setSubmitting(true);
     try {
-      await api.post('/leave', form);
+      const { error } = await supabase.from('leave_requests').insert({
+        ...form,
+        employee_id: user.id
+      });
+      if (error) throw error;
+      
       setTab('history');
       setForm({ leave_type: 'Casual Leave', start_date: '', end_date: '', reason: '' });
-      const { data } = await api.get('/leave');
-      setLeaves(data);
-      const { data: bal } = await api.get('/leave/balance');
-      setBalance(bal);
+      await fetchLeaveData();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to submit');
+      alert(err.message || 'Failed to submit');
     } finally {
       setSubmitting(false);
     }

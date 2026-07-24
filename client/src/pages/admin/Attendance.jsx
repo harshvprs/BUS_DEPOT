@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import api from '../../api';
+import { supabase } from '../../supabase';
 import { QrCode, RefreshCw, AlertCircle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -12,9 +12,17 @@ export default function Attendance() {
   const generateQR = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.post('/attendance/generate-qr');
-      setQrData(data.qr_data);
-      setExpiresAt(new Date(data.expires_at));
+      // Simulate generating a secure QR token since Express server is gone
+      const token = btoa(JSON.stringify({ 
+        depot: 'Kempegowda', 
+        date: new Date().toISOString().split('T')[0],
+        nonce: Math.random()
+      }));
+      setQrData(token);
+      
+      const expires = new Date();
+      expires.setHours(23, 59, 59, 999);
+      setExpiresAt(expires);
     } catch (err) {
       console.error(err);
     } finally {
@@ -24,9 +32,33 @@ export default function Attendance() {
 
   const loadLive = useCallback(async () => {
     try {
-      const { data } = await api.get('/attendance/live');
-      setLiveData(data);
-    } catch {}
+      const today = new Date().toISOString().split('T')[0];
+      const { data: shifts } = await supabase
+        .from('shifts')
+        .select('*, profiles(name, employee_id), routes(route_code), attendance(*)')
+        .eq('date', today);
+
+      if (shifts) {
+        const formatted = shifts.map(s => {
+          // Find attendance for this shift/date
+          const att = s.attendance?.find(a => a.date === today) || {};
+          return {
+            id: s.id, // shift_id
+            emp_uuid: s.employee_id,
+            employee_id: s.profiles?.employee_id,
+            name: s.profiles?.name,
+            route_code: s.routes?.route_code,
+            start_time: s.start_time,
+            end_time: s.end_time,
+            check_in_time: att.check_in_time,
+            attendance_status: att.status
+          };
+        });
+        setLiveData(formatted);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   }, []);
 
   useEffect(() => {
@@ -38,9 +70,24 @@ export default function Attendance() {
 
   async function markAbsent() {
     if (!confirm('Mark all unchecked-in employees as absent?')) return;
-    const { data } = await api.post('/attendance/mark-absent');
-    alert(data.message);
-    loadLive();
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const missing = liveData.filter(d => !d.attendance_status);
+      
+      if (missing.length > 0) {
+        const inserts = missing.map(m => ({
+          employee_id: m.emp_uuid,
+          shift_id: m.id,
+          date: today,
+          status: 'absent'
+        }));
+        await supabase.from('attendance').insert(inserts);
+      }
+      alert('Missing employees marked as absent.');
+      loadLive();
+    } catch (err) {
+      alert('Error marking absent: ' + err.message);
+    }
   }
 
   const isExpired = expiresAt && new Date() > expiresAt;

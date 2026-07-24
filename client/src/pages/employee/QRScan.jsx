@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../api';
+import { supabase } from '../../supabase';
+import { useAuth } from '../../context/AuthContext';
 import { ArrowLeft, Camera, CheckCircle2, XCircle, Keyboard } from 'lucide-react';
 
 export default function QRScan() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [status, setStatus] = useState('scanning'); // scanning | success | error
   const [message, setMessage] = useState('');
@@ -47,13 +49,64 @@ export default function QRScan() {
   }, [manualMode]);
 
   async function handleScan(qrToken) {
+    if (!qrToken || qrToken.length < 5) {
+      setStatus('error');
+      setMessage('Invalid QR code');
+      return;
+    }
+    
     try {
-      const { data } = await api.post('/attendance/checkin', { qr_token: qrToken });
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Check if already checked in
+      const { data: existing } = await supabase
+        .from('attendance')
+        .select('*')
+        .eq('employee_id', user.id)
+        .eq('date', today)
+        .single();
+        
+      if (existing && existing.check_in_time) {
+        throw new Error('Already checked in for today.');
+      }
+      
+      // Find shift for today
+      const { data: shift } = await supabase
+        .from('shifts')
+        .select('*')
+        .eq('employee_id', user.id)
+        .eq('date', today)
+        .single();
+        
+      const checkInTime = new Date();
+      let attStatus = 'present';
+      if (shift && shift.start_time) {
+        const shiftStart = new Date(`${today}T${shift.start_time}`);
+        // 15 minutes grace period
+        if (checkInTime > new Date(shiftStart.getTime() + 15 * 60000)) {
+          attStatus = 'late';
+        }
+      }
+      
+      const { data, error } = await supabase
+        .from('attendance')
+        .insert({
+          employee_id: user.id,
+          shift_id: shift?.id || null,
+          check_in_time: checkInTime.toISOString(),
+          date: today,
+          status: attStatus
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
       setStatus('success');
       setMessage(`Checked in at ${new Date(data.check_in_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} — Status: ${data.status === 'present' ? 'On Time ✅' : 'Late ⚠️'}`);
     } catch (err) {
       setStatus('error');
-      setMessage(err.response?.data?.error || 'Check-in failed');
+      setMessage(err.message || 'Check-in failed');
     }
   }
 

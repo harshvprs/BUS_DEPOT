@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../api';
+import { supabase } from '../../supabase';
 import { MapPin, Clock, QrCode, Calendar } from 'lucide-react';
 
 export default function EmployeeHome() {
@@ -14,28 +14,84 @@ export default function EmployeeHome() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      api.get('/schedule', { params: { week: getMonday(new Date()).toISOString().split('T')[0] } }),
-      api.get('/attendance/my-today'),
-      api.get('/leave/balance'),
-      api.get('/notifications'),
-    ]).then(([sched, att, bal, notifs]) => {
-      const today = new Date().toISOString().split('T')[0];
-      const myToday = sched.data.shifts.find(s => s.date === today);
-      setTodayShift(myToday || null);
-      setAttendance(att.data);
-      setLeaveBalance(bal.data);
-      setNotifications(notifs.data.slice(0, 3));
-    }).catch(console.error).finally(() => setLoading(false));
-  }, []);
+    if (!user) return;
+    
+    const fetchHomeData = async () => {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Fetch Today's Shift
+        const { data: shiftData } = await supabase
+          .from('shifts')
+          .select(`*, routes (route_name, route_code)`)
+          .eq('employee_id', user.id)
+          .eq('date', today)
+          .single();
+        
+        // Map nested route data for backward compatibility in UI
+        if (shiftData && shiftData.routes) {
+          shiftData.route_name = shiftData.routes.route_name;
+          shiftData.route_code = shiftData.routes.route_code;
+        }
+        
+        // Fetch Today's Attendance
+        const { data: attData } = await supabase
+          .from('attendance')
+          .select('*')
+          .eq('employee_id', user.id)
+          .eq('date', today)
+          .single();
+          
+        // Fetch Leave Balance (calculated)
+        const { count: usedLeaves } = await supabase
+          .from('leave_requests')
+          .select('*', { count: 'exact', head: true })
+          .eq('employee_id', user.id)
+          .eq('status', 'approved');
+          
+        const bal = {
+          used: usedLeaves || 0,
+          total: 12,
+          remaining: 12 - (usedLeaves || 0)
+        };
+        
+        // Fetch Notifications
+        const { data: notifs } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(3);
+
+        setTodayShift(shiftData || null);
+        setAttendance(attData || null);
+        setLeaveBalance(bal);
+        setNotifications(notifs || []);
+      } catch (error) {
+        console.error('Error fetching home data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchHomeData();
+  }, [user]);
 
   async function handleCheckout() {
     try {
-      await api.post('/attendance/checkout');
-      const { data } = await api.get('/attendance/my-today');
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('attendance')
+        .update({ check_out_time: new Date().toISOString() })
+        .eq('employee_id', user.id)
+        .eq('date', today)
+        .select()
+        .single();
+        
+      if (error) throw error;
       setAttendance(data);
     } catch (err) {
-      alert(err.response?.data?.error || 'Checkout failed');
+      alert(err.message || 'Checkout failed');
     }
   }
 

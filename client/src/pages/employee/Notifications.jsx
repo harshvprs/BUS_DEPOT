@@ -1,24 +1,32 @@
 import { useState, useEffect } from 'react';
-import api from '../../api';
+import { supabase } from '../../supabase';
+import { useAuth } from '../../context/AuthContext';
 import { Bell, CheckCheck } from 'lucide-react';
 
 export default function Notifications() {
+  const { user } = useAuth();
   const [notifs, setNotifs] = useState([]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [user]);
 
   async function load() {
-    const { data } = await api.get('/notifications');
-    setNotifs(data);
+    if (!user) return;
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    setNotifs(data || []);
   }
 
   async function markRead(id) {
-    await api.put(`/notifications/${id}/read`);
+    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
     setNotifs(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
   }
 
   async function markAllRead() {
-    await api.put('/notifications/read-all');
+    if (!user) return;
+    await supabase.from('notifications').update({ is_read: true }).eq('user_id', user.id).eq('is_read', false);
     setNotifs(prev => prev.map(n => ({ ...n, is_read: true })));
   }
 

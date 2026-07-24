@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api from '../../api';
+import { supabase } from '../../supabase';
 import { FileBarChart, Download } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -13,16 +13,50 @@ export default function Reports() {
 
   async function load() {
     setLoading(true);
-    const { data } = await api.get('/reports/employee-attendance', { params: { from, to } });
-    setEmpData(data.map(d => ({
-      ...d,
-      percentage: d.total > 0 ? Math.round(((parseInt(d.present) + parseInt(d.late)) / parseInt(d.total)) * 100) : 0,
-    })));
-    setLoading(false);
+    try {
+      const { data: profiles } = await supabase.from('profiles').select('id, name, employee_id').eq('role', 'employee');
+      const { data: attendance } = await supabase.from('attendance')
+        .select('employee_id, status, date')
+        .gte('date', from)
+        .lte('date', to);
+        
+      const empStats = (profiles || []).map(p => {
+        const pAtts = attendance?.filter(a => a.employee_id === p.id) || [];
+        const present = pAtts.filter(a => a.status === 'present').length;
+        const late = pAtts.filter(a => a.status === 'late').length;
+        const absent = pAtts.filter(a => a.status === 'absent').length;
+        const total = present + late + absent;
+        const percentage = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
+        
+        return {
+          name: p.name,
+          employee_id: p.employee_id,
+          present, late, absent, total, percentage
+        };
+      });
+      setEmpData(empStats);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function downloadCSV(type) {
-    window.open(`/api/reports/download/${type}?from=${from}&to=${to}`, '_blank');
+    if (type === 'attendance') {
+      let csv = 'Employee,ID,Present,Late,Absent,Total,Percentage\n';
+      empData.forEach(d => {
+        csv += `"${d.name}","${d.employee_id}",${d.present},${d.late},${d.absent},${d.total},${d.percentage}%\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `attendance_report_${from}_${to}.csv`;
+      a.click();
+    } else {
+      alert('Leave CSV download requires full leave requests fetch. (Not implemented in demo)');
+    }
   }
 
   const summaryStats = empData.length > 0 ? {

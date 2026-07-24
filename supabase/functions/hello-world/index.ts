@@ -1,46 +1,54 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Setup type definitions for built-in Supabase Runtime APIs
-import "@supabase/functions-js/edge-runtime.d.ts";
-import { withSupabase } from "@supabase/server";
+console.log("Hello from leave-notifications Edge Function!")
 
-console.log("Hello from Functions!");
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    }})
+  }
 
-// This endpoint uses 'publishable' | 'secret' access, apiKey is required.
-// Use publishable for Client-facing, key-validated endpoints
-// Use secret for Server-to-server, internal calls
-export default {
-  fetch: withSupabase({ auth: ["publishable", "secret"] }, async (req, ctx) => {
-    // Called by another service with a secret key
-    // ctx.supabaseAdmin bypasses RLS — use for privileged operations
-    /*
-    if (ctx.authMode === "secret") {
-      const { user_id } = await req.json();
-      const { data } = await ctx.supabaseAdmin.auth.admin.getUserById(user_id);
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, supabaseKey)
 
-      return Response.json({
-        email: data?.user?.email,
-      });
+    // Parse the payload (e.g. from a Database Webhook)
+    const payload = await req.json()
+    const record = payload.record || payload
+
+    if (record.status === 'pending') {
+      // Create a notification for the admin
+      const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'admin')
+      
+      if (admins && admins.length > 0) {
+        const notifications = admins.map(admin => ({
+          user_id: admin.id,
+          message: `New leave request submitted.`,
+          is_read: false
+        }))
+        await supabase.from('notifications').insert(notifications)
+      }
+    } else if (record.status === 'approved' || record.status === 'rejected') {
+      // Notify the employee
+      await supabase.from('notifications').insert({
+        user_id: record.employee_id,
+        message: `Your leave request has been ${record.status}.`,
+        is_read: false
+      })
     }
-    */
 
-    const { name } = await req.json();
-
-    return Response.json({
-      message: `Hello ${name}!`,
-    });
-  }),
-};
-
-/* To invoke locally:
-
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
-
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/hello-world' \
-    --header 'apiKey: sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH' \
-    --data '{"name":"Functions"}'
-
-*/
+    return new Response(
+      JSON.stringify({ message: 'Notifications processed successfully' }),
+      { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } },
+    )
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      status: 400,
+    })
+  }
+})
