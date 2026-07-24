@@ -14,6 +14,10 @@ export function AuthProvider({ children }) {
       if (session?.user) {
         fetchProfile(session.user);
       } else {
+        // If there's an access token in the URL, wait for onAuthStateChange to handle it
+        if (window.location.hash.includes('access_token=')) {
+          return;
+        }
         setLoading(false);
         setInitialLoad(false);
       }
