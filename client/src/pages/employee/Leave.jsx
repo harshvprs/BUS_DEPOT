@@ -1,0 +1,150 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api from '../../api';
+import { FileText, Plus, Clock, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
+
+export default function Leave() {
+  // eslint-disable-next-line no-unused-vars
+  const navigate = useNavigate();
+  const [tab, setTab] = useState('history'); // history | apply
+  const [leaves, setLeaves] = useState([]);
+  const [balance, setBalance] = useState(null);
+  const [form, setForm] = useState({ leave_type: 'Casual Leave', start_date: '', end_date: '', reason: '' });
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    api.get('/leave').then(({ data }) => setLeaves(data));
+    api.get('/leave/balance').then(({ data }) => setBalance(data));
+  }, []);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await api.post('/leave', form);
+      setTab('history');
+      setForm({ leave_type: 'Casual Leave', start_date: '', end_date: '', reason: '' });
+      const { data } = await api.get('/leave');
+      setLeaves(data);
+      const { data: bal } = await api.get('/leave/balance');
+      setBalance(bal);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to submit');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const daysRequested = form.start_date && form.end_date
+    ? Math.ceil((new Date(form.end_date) - new Date(form.start_date)) / (1000 * 60 * 60 * 24)) + 1
+    : 0;
+
+  return (
+    <div className="p-4 space-y-4 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-navy-900 flex items-center gap-2">
+          <FileText size={22} className="text-amber-500" /> Leave
+        </h1>
+        {tab === 'history' ? (
+          <button onClick={() => setTab('apply')} className="btn btn-primary text-sm">
+            <Plus size={16} /> Apply
+          </button>
+        ) : (
+          <button onClick={() => setTab('history')} className="btn btn-ghost text-sm">
+            <ArrowLeft size={16} /> History
+          </button>
+        )}
+      </div>
+
+      {/* Balance card */}
+      {balance && (
+        <div className="bg-white rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-500">Leave Balance</span>
+            <span className="text-sm font-medium text-navy-900">{balance.remaining} of {balance.total} days</span>
+          </div>
+          <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${(balance.remaining / balance.total) * 100}%` }} />
+          </div>
+          <p className="text-xs text-gray-400 mt-1">{balance.used} days used this year</p>
+        </div>
+      )}
+
+      {tab === 'apply' ? (
+        /* Apply form */
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="label">Leave Type</label>
+            <select className="input" value={form.leave_type} onChange={e => setForm({ ...form, leave_type: e.target.value })}>
+              <option>Casual Leave</option>
+              <option>Sick Leave</option>
+              <option>Earned Leave</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Start Date</label>
+              <input type="date" className="input" required value={form.start_date}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={e => setForm({ ...form, start_date: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">End Date</label>
+              <input type="date" className="input" required value={form.end_date}
+                min={form.start_date || new Date().toISOString().split('T')[0]}
+                onChange={e => setForm({ ...form, end_date: e.target.value })} />
+            </div>
+          </div>
+
+          {daysRequested > 0 && (
+            <div className="bg-amber-50 rounded-lg p-3 text-sm text-amber-800">
+              Requesting <strong>{daysRequested} day{daysRequested > 1 ? 's' : ''}</strong> · Balance after: {(balance?.remaining || 0) - daysRequested} days
+            </div>
+          )}
+
+          <div>
+            <label className="label">Reason</label>
+            <textarea className="input min-h-[80px]" placeholder="Describe your reason..."
+              value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} />
+          </div>
+
+          <button type="submit" disabled={submitting} className="btn btn-primary w-full py-3 text-base font-semibold">
+            {submitting ? 'Submitting...' : 'Submit Request'}
+          </button>
+        </form>
+      ) : (
+        /* Leave history */
+        <div className="space-y-2">
+          {leaves.length === 0 ? (
+            <div className="text-center py-8 text-gray-400 text-sm">No leave requests yet</div>
+          ) : leaves.map(l => (
+            <div key={l.id} className="bg-white rounded-xl p-4">
+              <div className="flex items-start justify-between mb-2">
+                <span className={`badge text-xs ${
+                  l.leave_type === 'Sick Leave' ? 'bg-red-50 text-red-700' :
+                  l.leave_type === 'Earned Leave' ? 'bg-blue-50 text-blue-700' :
+                  'bg-amber-50 text-amber-700'
+                }`}>{l.leave_type}</span>
+                <span className={`badge text-xs ${
+                  l.status === 'pending' ? 'badge-pending' :
+                  l.status === 'approved' ? 'badge-approved' : 'badge-rejected'
+                }`}>
+                  {l.status === 'approved' && <CheckCircle size={12} className="mr-1" />}
+                  {l.status === 'rejected' && <XCircle size={12} className="mr-1" />}
+                  {l.status === 'pending' && <Clock size={12} className="mr-1" />}
+                  {l.status.charAt(0).toUpperCase() + l.status.slice(1)}
+                </span>
+              </div>
+              <p className="text-sm text-navy-900 font-medium mb-1">
+                {new Date(l.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                {l.start_date !== l.end_date && ` – ${new Date(l.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+              </p>
+              {l.reason && <p className="text-xs text-gray-500">{l.reason}</p>}
+              {l.admin_comment && <p className="text-xs text-gray-400 mt-1 italic">Admin: {l.admin_comment}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

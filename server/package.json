@@ -1,0 +1,20 @@
+{
+  "name": "depotflow-server",
+  "version": "1.0.0",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^13.0.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.22.0"
+  },
+  "allowScripts": {
+    "better-sqlite3@13.0.1": true
+  },
+  "scripts": {
+    "db:init": "node db-init.js",
+    "db:seed": "node seed.js"
+  }
+}
