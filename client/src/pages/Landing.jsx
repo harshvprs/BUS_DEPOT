@@ -38,9 +38,6 @@ export default function Landing() {
         </header>
 
         <div className="relative z-10 px-6 lg:px-16 py-20 lg:py-32 max-w-5xl">
-          <div className="inline-block px-3 py-1 glass rounded-full mb-6 border border-amber-500/30">
-            <span className="text-amber-400 text-sm font-medium">SIH 2024 · Problem Statement SKH050</span>
-          </div>
           <h1 className="text-white text-4xl lg:text-6xl font-bold leading-tight mb-6">
             Modernizing Bus Depot<br />
             <span className="bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent">Operations</span>
