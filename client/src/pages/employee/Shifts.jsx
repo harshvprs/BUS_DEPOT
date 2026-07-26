@@ -49,20 +49,20 @@ export default function MyShifts() {
   return (
     <div className="p-4 space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-navy-900 flex items-center gap-2">
-          <CalendarDays size={22} className="text-amber-500" /> My Shifts
+        <h1 className="text-xl font-bold text-white flex items-center gap-2">
+          <CalendarDays size={22} className="text-amber-400" /> My Shifts
         </h1>
       </div>
 
       {/* Week selector */}
-      <div className="flex items-center justify-between bg-white rounded-xl p-3">
+      <div className="flex items-center justify-between bg-white/5 rounded-xl p-3">
         <button onClick={() => setWeekStart(new Date(new Date(weekStart).getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])}
-          className="p-1.5 rounded-lg hover:bg-gray-100"><ChevronLeft size={20} /></button>
-        <span className="text-sm font-semibold text-navy-900">
+          className="p-1.5 rounded-lg hover:bg-white/5"><ChevronLeft size={20} /></button>
+        <span className="text-sm font-semibold text-white">
           {days[0]?.month} {days[0]?.dayNum} – {days[6]?.month} {days[6]?.dayNum}
         </span>
         <button onClick={() => setWeekStart(new Date(new Date(weekStart).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])}
-          className="p-1.5 rounded-lg hover:bg-gray-100"><ChevronRight size={20} /></button>
+          className="p-1.5 rounded-lg hover:bg-white/5"><ChevronRight size={20} /></button>
       </div>
 
       {/* Day cards */}
@@ -75,32 +75,32 @@ export default function MyShifts() {
 
           return (
             <div key={d.date} className={`rounded-xl p-4 transition-all ${
-              isToday ? 'bg-white border-l-4 border-l-amber-500 shadow-sm' :
-              isPast ? 'bg-white/50' : 'bg-white'
+              isToday ? 'bg-white/5 border-l-4 border-l-amber-400 shadow-sm' :
+              isPast ? 'bg-white/3' : 'bg-white/5'
             }`}>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg flex flex-col items-center justify-center text-xs font-bold ${
-                    isToday ? 'bg-amber-500 text-navy-900' :
-                    isPast ? 'bg-gray-100 text-gray-400' : 'bg-navy-50 text-navy-600'
+                    isToday ? 'bg-amber-500 text-white' :
+                    isPast ? 'bg-white/5 text-white/30' : 'bg-white/5 text-white/60'
                   }`}>
                     <span>{d.dayName}</span>
                     <span className="text-sm">{d.dayNum}</span>
                   </div>
 
                   {isSunday ? (
-                    <div className="text-gray-400 text-sm">Day Off</div>
+                    <div className="text-white/30 text-sm">Day Off</div>
                   ) : dayShifts.length === 0 ? (
-                    <div className="text-gray-400 text-sm">No shift</div>
+                    <div className="text-white/30 text-sm">No shift</div>
                   ) : (
                     <div className="space-y-1">
                       {dayShifts.map((s, i) => (
                         <div key={i}>
-                          <div className="flex items-center gap-1.5 text-sm font-medium text-navy-900">
-                            <MapPin size={14} className="text-amber-500" />
+                          <div className="flex items-center gap-1.5 text-sm font-medium text-white">
+                            <MapPin size={14} className="text-amber-400" />
                             {s.route_code}: {s.route_name}
                           </div>
-                          <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
+                          <div className="flex items-center gap-1.5 text-xs text-white/40 mt-0.5">
                             <Clock size={12} />
                             {s.start_time?.slice(0,5)} – {s.end_time?.slice(0,5)}
                           </div>
@@ -114,7 +114,7 @@ export default function MyShifts() {
                   <span className={`badge text-xs ${
                     dayShifts[0].status === 'completed' ? 'badge-present' :
                     dayShifts[0].status === 'missed' ? 'badge-absent' :
-                    isPast ? 'bg-gray-100 text-gray-500' : 'badge-scheduled'
+                    isPast ? 'bg-white/5 text-white/40' : 'badge-scheduled'
                   }`}>
                     {dayShifts[0].status === 'completed' ? 'Completed' :
                      dayShifts[0].status === 'missed' ? 'Missed' :

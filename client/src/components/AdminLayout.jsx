@@ -11,6 +11,7 @@ const navItems = [
   { to: '/admin/attendance', icon: QrCode, label: 'Attendance' },
   { to: '/admin/leave', icon: ClipboardList, label: 'Leave Requests' },
   { to: '/admin/schedule', icon: CalendarClock, label: 'Schedule' },
+  { to: '/admin/fleet', icon: Bus, label: 'Fleet' },
   { to: '/admin/reports', icon: FileBarChart, label: 'Reports' },
 ];
 
@@ -65,17 +66,22 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-64 bg-surface-sidebar flex flex-col shrink-0">
-        <div className="p-5 border-b border-navy-800">
+    <div className="flex h-screen overflow-hidden relative">
+      {/* Background orbs */}
+      <div className="glass-orb w-96 h-96 bg-amber-500 -top-48 -left-48 fixed" />
+      <div className="glass-orb w-80 h-80 bg-blue-500 bottom-0 right-0 fixed" />
+      <div className="glass-orb w-64 h-64 bg-teal-400 top-1/2 left-1/3 fixed" />
+
+      {/* Sidebar — frosted dark glass */}
+      <aside className="w-64 glass-dark flex flex-col shrink-0 relative z-10 border-r border-white/5" style={{ borderRadius: 0 }}>
+        <div className="p-5 border-b border-white/8">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-amber-500 rounded-lg flex items-center justify-center">
+            <div className="w-9 h-9 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center shadow-lg glow-amber">
               <Bus size={20} className="text-navy-900" />
             </div>
             <div>
               <h1 className="text-white font-bold text-lg leading-tight">DepotFlow</h1>
-              <p className="text-navy-400 text-xs">Smart Workforce Mgmt</p>
+              <p className="text-white/40 text-xs">Smart Workforce Mgmt</p>
             </div>
           </div>
         </div>
@@ -84,8 +90,10 @@ export default function AdminLayout() {
           {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink key={to} to={to}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  isActive ? 'bg-amber-500/15 text-amber-400' : 'text-navy-300 hover:text-white hover:bg-navy-800'
+                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  isActive 
+                    ? 'bg-amber-500/15 text-amber-400 shadow-[0_0_15px_rgba(245,166,35,0.15)]' 
+                    : 'text-white/50 hover:text-white hover:bg-white/5'
                 }`
               }>
               <Icon size={18} />
@@ -94,37 +102,37 @@ export default function AdminLayout() {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-navy-800">
+        <div className="p-4 border-t border-white/8">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 bg-navy-700 rounded-full flex items-center justify-center text-amber-400 text-sm font-bold">
+            <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center text-navy-900 text-sm font-bold">
               {user?.name?.[0]}
             </div>
             <div className="min-w-0">
               <p className="text-white text-sm font-medium truncate">{user?.name}</p>
-              <p className="text-navy-400 text-xs">Admin</p>
+              <p className="text-white/35 text-xs">Admin</p>
             </div>
           </div>
           <button onClick={() => { logout(); navigate('/login'); }}
-            className="flex items-center gap-2 text-navy-400 hover:text-white text-sm w-full transition-colors">
+            className="flex items-center gap-2 text-white/40 hover:text-white text-sm w-full transition-colors">
             <LogOut size={16} /> Sign Out
           </button>
         </div>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
-        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 shrink-0">
+      <main className="flex-1 flex flex-col overflow-hidden relative z-10">
+        {/* Top bar — frosted glass */}
+        <header className="h-16 glass-dark flex items-center justify-between px-6 shrink-0 border-b border-white/5" style={{ borderRadius: 0 }}>
           <div>
-            <h2 className="text-navy-900 font-semibold">Kempegowda Bus Depot</h2>
-            <p className="text-gray-500 text-xs">{new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <h2 className="text-white font-semibold">Kempegowda Bus Depot</h2>
+            <p className="text-white/40 text-xs">{new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
           </div>
 
           <div className="relative">
-            <button onClick={toggleNotifs} className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
-              <Bell size={20} className="text-gray-600" />
+            <button onClick={toggleNotifs} className="relative p-2 rounded-xl hover:bg-white/8 transition-colors">
+              <Bell size={20} className="text-white/60" />
               {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-danger-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-full flex items-center justify-center font-bold shadow-lg glow-danger">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -133,26 +141,26 @@ export default function AdminLayout() {
             {showNotifs && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowNotifs(false)} />
-                <div className="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 animate-fade-in max-h-96 overflow-hidden flex flex-col">
-                  <div className="p-3 border-b border-gray-100 flex items-center justify-between">
-                    <h3 className="font-semibold text-sm">Notifications</h3>
+                <div className="absolute right-0 top-12 w-80 glass-dark rounded-xl shadow-2xl z-50 animate-fade-in max-h-96 overflow-hidden flex flex-col border border-white/10">
+                  <div className="p-3 border-b border-white/8 flex items-center justify-between">
+                    <h3 className="font-semibold text-sm text-white">Notifications</h3>
                     {unreadCount > 0 && (
-                      <button onClick={markAllRead} className="text-xs text-amber-600 hover:underline">Mark all read</button>
+                      <button onClick={markAllRead} className="text-xs text-amber-400 hover:underline">Mark all read</button>
                     )}
                   </div>
                   <div className="overflow-y-auto flex-1">
                     {notifs.length === 0 ? (
-                      <p className="p-4 text-gray-400 text-sm text-center">No notifications</p>
+                      <p className="p-4 text-white/30 text-sm text-center">No notifications</p>
                     ) : notifs.slice(0, 10).map(n => (
                       <div key={n.id} onClick={() => !n.is_read && markRead(n.id)}
-                        className={`px-4 py-3 border-b border-gray-50 text-sm cursor-pointer hover:bg-gray-50 ${
-                          !n.is_read ? 'bg-amber-50/50' : ''
+                        className={`px-4 py-3 border-b border-white/5 text-sm cursor-pointer hover:bg-white/5 ${
+                          !n.is_read ? 'bg-amber-500/5' : ''
                         }`}>
                         <div className="flex gap-2">
-                          {!n.is_read && <div className="w-2 h-2 bg-amber-500 rounded-full mt-1.5 shrink-0" />}
+                          {!n.is_read && <div className="w-2 h-2 bg-amber-500 rounded-full mt-1.5 shrink-0 glow-amber" />}
                           <div>
-                            <p className={!n.is_read ? 'font-medium' : 'text-gray-600'}>{n.message}</p>
-                            <p className="text-xs text-gray-400 mt-1">{new Date(n.created_at).toLocaleString('en-IN')}</p>
+                            <p className={!n.is_read ? 'font-medium text-white' : 'text-white/60'}>{n.message}</p>
+                            <p className="text-xs text-white/30 mt-1">{new Date(n.created_at).toLocaleString('en-IN')}</p>
                           </div>
                         </div>
                       </div>

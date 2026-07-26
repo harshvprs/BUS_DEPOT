@@ -72,8 +72,8 @@ export default function Leave() {
   return (
     <div className="p-4 space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-navy-900 flex items-center gap-2">
-          <FileText size={22} className="text-amber-500" /> Leave
+        <h1 className="text-xl font-bold text-white flex items-center gap-2">
+          <FileText size={22} className="text-amber-400" /> Leave
         </h1>
         {tab === 'history' ? (
           <button onClick={() => setTab('apply')} className="btn btn-primary text-sm">
@@ -88,15 +88,15 @@ export default function Leave() {
 
       {/* Balance card */}
       {balance && (
-        <div className="bg-white rounded-xl p-4">
+        <div className="bg-white/5 rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-500">Leave Balance</span>
-            <span className="text-sm font-medium text-navy-900">{balance.remaining} of {balance.total} days</span>
+            <span className="text-sm text-white/40">Leave Balance</span>
+            <span className="text-sm font-medium text-white">{balance.remaining} of {balance.total} days</span>
           </div>
-          <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
             <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${(balance.remaining / balance.total) * 100}%` }} />
           </div>
-          <p className="text-xs text-gray-400 mt-1">{balance.used} days used this year</p>
+          <p className="text-xs text-white/30 mt-1">{balance.used} days used this year</p>
         </div>
       )}
 
@@ -127,7 +127,7 @@ export default function Leave() {
           </div>
 
           {daysRequested > 0 && (
-            <div className="bg-amber-50 rounded-lg p-3 text-sm text-amber-800">
+            <div className="bg-amber-50 rounded-lg p-3 text-sm text-amber-300">
               Requesting <strong>{daysRequested} day{daysRequested > 1 ? 's' : ''}</strong> · Balance after: {(balance?.remaining || 0) - daysRequested} days
             </div>
           )}
@@ -146,14 +146,14 @@ export default function Leave() {
         /* Leave history */
         <div className="space-y-2">
           {leaves.length === 0 ? (
-            <div className="text-center py-8 text-gray-400 text-sm">No leave requests yet</div>
+            <div className="text-center py-8 text-white/30 text-sm">No leave requests yet</div>
           ) : leaves.map(l => (
-            <div key={l.id} className="bg-white rounded-xl p-4">
+            <div key={l.id} className="bg-white/5 rounded-xl p-4">
               <div className="flex items-start justify-between mb-2">
                 <span className={`badge text-xs ${
                   l.leave_type === 'Sick Leave' ? 'bg-red-50 text-red-700' :
                   l.leave_type === 'Earned Leave' ? 'bg-blue-50 text-blue-700' :
-                  'bg-amber-50 text-amber-700'
+                  'bg-amber-50 text-amber-400'
                 }`}>{l.leave_type}</span>
                 <span className={`badge text-xs ${
                   l.status === 'pending' ? 'badge-pending' :
@@ -165,12 +165,12 @@ export default function Leave() {
                   {l.status.charAt(0).toUpperCase() + l.status.slice(1)}
                 </span>
               </div>
-              <p className="text-sm text-navy-900 font-medium mb-1">
+              <p className="text-sm text-white font-medium mb-1">
                 {new Date(l.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                 {l.start_date !== l.end_date && ` – ${new Date(l.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`}
               </p>
-              {l.reason && <p className="text-xs text-gray-500">{l.reason}</p>}
-              {l.admin_comment && <p className="text-xs text-gray-400 mt-1 italic">Admin: {l.admin_comment}</p>}
+              {l.reason && <p className="text-xs text-white/40">{l.reason}</p>}
+              {l.admin_comment && <p className="text-xs text-white/30 mt-1 italic">Admin: {l.admin_comment}</p>}
             </div>
           ))}
         </div>

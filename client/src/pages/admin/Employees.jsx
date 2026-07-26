@@ -116,8 +116,8 @@ export default function Employees() {
       {/* Header with tabs */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
-          <Users size={24} className="text-navy-900" />
-          <h1 className="text-2xl font-bold text-navy-900">
+          <Users size={24} className="text-white" />
+          <h1 className="text-2xl font-bold text-white">
             {showRoutes ? 'Route Management' : 'Employee Management'}
           </h1>
         </div>
@@ -137,13 +137,13 @@ export default function Employees() {
         <>
           {/* Search */}
           <div className="relative max-w-md">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
             <input type="text" className="input pl-10" placeholder="Search by name or ID..."
               value={search} onChange={e => setSearch(e.target.value)} />
           </div>
 
           {/* Employee table */}
-          <div className="table-container bg-white">
+          <div className="table-container">
             <table className="data-table">
               <thead>
                 <tr>
@@ -157,31 +157,31 @@ export default function Employees() {
               </thead>
               <tbody>
                 {employees.length === 0 ? (
-                  <tr><td colSpan={6} className="text-center py-8 text-gray-400">No employees found</td></tr>
+                  <tr><td colSpan={6} className="text-center py-8 text-white/30">No employees found</td></tr>
                 ) : employees.map(emp => (
                   <tr key={emp.id}>
                     <td className="font-mono text-sm font-medium">{emp.employee_id}</td>
-                    <td className="font-medium text-navy-900">{emp.name}</td>
-                    <td className="text-gray-500">{emp.phone || '—'}</td>
-                    <td className="text-gray-500 text-sm">{emp.current_route || '—'}</td>
+                    <td className="font-medium text-white">{emp.name}</td>
+                    <td className="text-white/40">{emp.phone || '—'}</td>
+                    <td className="text-white/40 text-sm">{emp.current_route || '—'}</td>
                     <td>
-                      <span className={`badge ${emp.is_active ? 'badge-present' : 'bg-gray-100 text-gray-500'}`}>
+                      <span className={`badge ${emp.is_active ? 'badge-present' : 'bg-white/5 text-white/40'}`}>
                         {emp.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td>
                       <div className="flex gap-2">
-                        <button onClick={() => openEdit(emp)} className="p-1.5 rounded-lg hover:bg-gray-100" title="Edit">
-                          <Edit2 size={15} className="text-gray-500" />
+                        <button onClick={() => openEdit(emp)} className="p-1.5 rounded-lg hover:bg-white/5" title="Edit">
+                          <Edit2 size={15} className="text-white/40" />
                         </button>
-                        <button onClick={() => toggleActive(emp)} className="p-1.5 rounded-lg hover:bg-gray-100"
+                        <button onClick={() => toggleActive(emp)} className="p-1.5 rounded-lg hover:bg-white/5"
                           title={emp.is_active ? 'Deactivate' : 'Activate'}>
                           {emp.is_active
                             ? <ToggleRight size={18} className="text-success-500" />
-                            : <ToggleLeft size={18} className="text-gray-400" />
+                            : <ToggleLeft size={18} className="text-white/30" />
                           }
                         </button>
-                        <button onClick={() => deleteEmployee(emp)} className="p-1.5 rounded-lg hover:bg-danger-50 text-danger-500" title="Delete">
+                        <button onClick={() => deleteEmployee(emp)} className="p-1.5 rounded-lg hover:bg-danger-50 text-red-400" title="Delete">
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -191,7 +191,7 @@ export default function Employees() {
               </tbody>
             </table>
           </div>
-          <p className="text-sm text-gray-400">Showing {employees.length} employees</p>
+          <p className="text-sm text-white/30">Showing {employees.length} employees</p>
         </>
       ) : (
         /* Routes management */
@@ -215,14 +215,14 @@ export default function Employees() {
             <button type="submit" className="btn btn-primary"><Plus size={16} /> Add Route</button>
           </form>
 
-          <div className="table-container bg-white">
+          <div className="table-container">
             <table className="data-table">
               <thead><tr><th>Code</th><th>Route Name</th><th>Required Staff</th></tr></thead>
               <tbody>
                 {routes.map(r => (
                   <tr key={r.id}>
                     <td className="font-mono font-medium">{r.route_code}</td>
-                    <td className="font-medium text-navy-900">{r.route_name}</td>
+                    <td className="font-medium text-white">{r.route_name}</td>
                     <td>{r.required_staff_count}</td>
                   </tr>
                 ))}
@@ -234,11 +234,11 @@ export default function Employees() {
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <h3 className="font-semibold text-lg text-navy-900">{editing ? 'Edit Employee' : 'Add New Employee'}</h3>
-              <button onClick={() => setShowModal(false)} className="p-1 rounded-lg hover:bg-gray-100"><X size={20} /></button>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
+          <div className="glass-card w-full max-w-md animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b border-white/8">
+              <h3 className="font-semibold text-lg text-white">{editing ? 'Edit Employee' : 'Add New Employee'}</h3>
+              <button onClick={() => setShowModal(false)} className="p-1 rounded-lg hover:bg-white/5"><X size={20} /></button>
             </div>
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
               <div>

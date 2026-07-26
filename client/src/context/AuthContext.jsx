@@ -105,6 +105,36 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  // Web Push Notifications via Supabase Realtime
+  useEffect(() => {
+    if (!user) return;
+    
+    // Request permission if not already granted or denied
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('DepotFlow Update', {
+              body: payload.new.message,
+              icon: '/icon-192.png'
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   return (
     <AuthContext.Provider value={{ user, login, logout, loading }}>
       {!initialLoad && children}

@@ -42,7 +42,7 @@ export default function Reports() {
     }
   }
 
-  function downloadCSV(type) {
+  async function downloadCSV(type) {
     if (type === 'attendance') {
       let csv = 'Employee,ID,Present,Late,Absent,Total,Percentage\n';
       empData.forEach(d => {
@@ -54,8 +54,35 @@ export default function Reports() {
       a.href = url;
       a.download = `attendance_report_${from}_${to}.csv`;
       a.click();
-    } else {
-      alert('Leave CSV download requires full leave requests fetch. (Not implemented in demo)');
+    } else if (type === 'leave') {
+      try {
+        const { data: leaves, error } = await supabase
+          .from('leave_requests')
+          .select('*, profiles!employee_id(name, employee_id)')
+          .gte('start_date', from)
+          .lte('end_date', to);
+          
+        if (error) throw error;
+        
+        let csv = 'Employee,Employee ID,Leave Type,Start Date,End Date,Status,Reason,Admin Comment\n';
+        leaves.forEach(l => {
+          const empName = l.profiles?.name || 'Unknown';
+          const empId = l.profiles?.employee_id || 'Unknown';
+          const reason = (l.reason || '').replace(/"/g, '""');
+          const comment = (l.admin_comment || '').replace(/"/g, '""');
+          csv += `"${empName}","${empId}","${l.leave_type}","${l.start_date}","${l.end_date}","${l.status}","${reason}","${comment}"\n`;
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `leave_report_${from}_${to}.csv`;
+        a.click();
+      } catch (err) {
+        console.error(err);
+        alert('Failed to download leave report.');
+      }
     }
   }
 
@@ -69,8 +96,8 @@ export default function Reports() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center gap-3">
-        <FileBarChart size={24} className="text-navy-900" />
-        <h1 className="text-2xl font-bold text-navy-900">Reports & Analytics</h1>
+        <FileBarChart size={24} className="text-white" />
+        <h1 className="text-2xl font-bold text-white">Reports & Analytics</h1>
       </div>
 
       {/* Filters */}
@@ -100,14 +127,14 @@ export default function Reports() {
       {empData.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Avg Attendance', value: `${summaryStats.avgAttendance}%`, color: 'text-navy-900' },
-            { label: 'Total Absences', value: summaryStats.totalLeaves, color: 'text-danger-500' },
-            { label: 'Late Check-ins', value: summaryStats.lateCheckins, color: 'text-amber-600' },
-            { label: 'Perfect Attendance', value: `${summaryStats.perfectAttendance} employees`, color: 'text-success-600' },
+            { label: 'Avg Attendance', value: `${summaryStats.avgAttendance}%`, color: 'text-white' },
+            { label: 'Total Absences', value: summaryStats.totalLeaves, color: 'text-red-400' },
+            { label: 'Late Check-ins', value: summaryStats.lateCheckins, color: 'text-amber-400' },
+            { label: 'Perfect Attendance', value: `${summaryStats.perfectAttendance} employees`, color: 'text-emerald-400' },
           ].map((s, i) => (
             <div key={i} className="card text-center">
               <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-              <p className="text-gray-500 text-sm mt-1">{s.label}</p>
+              <p className="text-white/40 text-sm mt-1">{s.label}</p>
             </div>
           ))}
         </div>
@@ -115,7 +142,7 @@ export default function Reports() {
 
       {/* Attendance table */}
       <div className="card">
-        <h3 className="font-semibold text-navy-900 mb-4">Attendance Summary</h3>
+        <h3 className="font-semibold text-white mb-4">Attendance Summary</h3>
         <div className="table-container">
           <table className="data-table">
             <thead>
@@ -132,15 +159,15 @@ export default function Reports() {
             <tbody>
               {empData.map((d, i) => (
                 <tr key={i}>
-                  <td className="font-medium text-navy-900">{d.name}</td>
-                  <td className="font-mono text-sm text-gray-500">{d.employee_id}</td>
-                  <td className="text-center text-success-600 font-medium">{d.present}</td>
-                  <td className="text-center text-amber-600 font-medium">{d.late}</td>
-                  <td className="text-center text-danger-500 font-medium">{d.absent}</td>
-                  <td className="text-center text-gray-500">{d.total}</td>
+                  <td className="font-medium text-white">{d.name}</td>
+                  <td className="font-mono text-sm text-white/40">{d.employee_id}</td>
+                  <td className="text-center text-emerald-400 font-medium">{d.present}</td>
+                  <td className="text-center text-amber-400 font-medium">{d.late}</td>
+                  <td className="text-center text-red-400 font-medium">{d.absent}</td>
+                  <td className="text-center text-white/40">{d.total}</td>
                   <td className="text-center">
                     <span className={`font-bold ${
-                      d.percentage >= 90 ? 'text-success-600' : d.percentage >= 75 ? 'text-amber-600' : 'text-danger-500'
+                      d.percentage >= 90 ? 'text-emerald-400' : d.percentage >= 75 ? 'text-amber-400' : 'text-red-400'
                     }`}>{d.percentage}%</span>
                   </td>
                 </tr>
@@ -153,7 +180,7 @@ export default function Reports() {
       {/* Chart */}
       {empData.length > 0 && (
         <div className="card">
-          <h3 className="font-semibold text-navy-900 mb-4">Attendance by Employee</h3>
+          <h3 className="font-semibold text-white mb-4">Attendance by Employee</h3>
           <ResponsiveContainer width="100%" height={Math.max(300, empData.length * 35)}>
             <BarChart data={empData} layout="vertical" margin={{ left: 30 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" horizontal={false} />

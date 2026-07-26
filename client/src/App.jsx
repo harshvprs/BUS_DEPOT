@@ -12,12 +12,14 @@ import Attendance from './pages/admin/Attendance';
 import LeaveRequests from './pages/admin/LeaveRequests';
 import Schedule from './pages/admin/Schedule';
 import Reports from './pages/admin/Reports';
+import Vehicles from './pages/admin/Vehicles';
 import EmployeeHome from './pages/employee/Home';
 import QRScan from './pages/employee/QRScan';
 import Shifts from './pages/employee/Shifts';
 import Leave from './pages/employee/Leave';
 import Notifications from './pages/employee/Notifications';
 import Settings from './pages/employee/Settings';
+import OpenShifts from './pages/employee/OpenShifts';
 
 export default function App() {
   return (
@@ -35,6 +37,7 @@ export default function App() {
             <Route path="attendance" element={<Attendance />} />
             <Route path="leave" element={<LeaveRequests />} />
             <Route path="schedule" element={<Schedule />} />
+            <Route path="fleet" element={<Vehicles />} />
             <Route path="reports" element={<Reports />} />
           </Route>
 
@@ -43,6 +46,7 @@ export default function App() {
             <Route index element={<Navigate to="home" replace />} />
             <Route path="home" element={<EmployeeHome />} />
             <Route path="shifts" element={<Shifts />} />
+            <Route path="openshifts" element={<OpenShifts />} />
             <Route path="leave" element={<Leave />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="settings" element={<Settings />} />

@@ -13,8 +13,8 @@ async function seed() {
   
   // Create admin
   const { data: adminAuth, error: adminErr } = await supabase.auth.signUp({
-    email: 'admin001@busdepot.com',
-    password: 'admin123',
+    email: 'manager01@busdepot.com',
+    password: 'secretAdmin99',
   });
   
   if (adminErr) {
@@ -24,18 +24,18 @@ async function seed() {
       {
         id: adminAuth.user.id,
         name: 'Admin User',
-        employee_id: 'ADMIN001',
+        employee_id: 'MANAGER01',
         role: 'admin'
       }
     ]);
     if (profileErr) console.error('Error creating admin profile:', profileErr.message);
-    else console.log('Admin user created: ADMIN001 / admin123');
+    else console.log('Admin user created: MANAGER01 / secretAdmin99');
   }
 
   // Create employee
   const { data: empAuth, error: empErr } = await supabase.auth.signUp({
-    email: 'emp001@busdepot.com',
-    password: 'password123',
+    email: 'staff01@busdepot.com',
+    password: 'staffPass123',
   });
 
   if (empErr) {
@@ -45,12 +45,12 @@ async function seed() {
       {
         id: empAuth.user.id,
         name: 'Demo Employee',
-        employee_id: 'EMP001',
+        employee_id: 'STAFF01',
         role: 'employee'
       }
     ]);
     if (profileErr) console.error('Error creating employee profile:', profileErr.message);
-    else console.log('Employee user created: EMP001 / password123');
+    else console.log('Employee user created: STAFF01 / staffPass123');
   }
 }
 

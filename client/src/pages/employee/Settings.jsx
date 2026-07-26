@@ -41,18 +41,18 @@ export default function Settings() {
   return (
     <div className="p-4 space-y-6 animate-fade-in">
       <div className="flex items-center gap-3 mb-6">
-        <SettingsIcon size={24} className="text-navy-900" />
-        <h1 className="text-2xl font-bold text-navy-900">Settings</h1>
+        <SettingsIcon size={24} className="text-white" />
+        <h1 className="text-2xl font-bold text-white">Settings</h1>
       </div>
 
       <div className="card">
-        <h2 className="text-lg font-semibold text-navy-900 mb-4 flex items-center gap-2">
-          <Lock size={18} className="text-amber-500" />
+        <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <Lock size={18} className="text-amber-400" />
           Change Password
         </h2>
         
         {success && (
-          <div className="mb-4 p-3 bg-success-50 text-success-700 rounded-xl flex items-center gap-2 text-sm">
+          <div className="mb-4 p-3 bg-success-50 text-emerald-300 rounded-xl flex items-center gap-2 text-sm">
             <CheckCircle2 size={16} />
             {success}
           </div>
@@ -98,19 +98,19 @@ export default function Settings() {
       </div>
 
       <div className="card">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Profile Info</h3>
+        <h3 className="text-sm font-semibold text-white/40 uppercase tracking-wide mb-3">Profile Info</h3>
         <div className="space-y-2 text-sm">
-          <div className="flex justify-between py-2 border-b border-gray-50">
-            <span className="text-gray-500">Name</span>
-            <span className="font-medium text-navy-900">{user?.name}</span>
+          <div className="flex justify-between py-2 border-b border-white/5">
+            <span className="text-white/40">Name</span>
+            <span className="font-medium text-white">{user?.name}</span>
           </div>
-          <div className="flex justify-between py-2 border-b border-gray-50">
-            <span className="text-gray-500">Employee ID</span>
-            <span className="font-mono text-navy-900">{user?.employee_id}</span>
+          <div className="flex justify-between py-2 border-b border-white/5">
+            <span className="text-white/40">Employee ID</span>
+            <span className="font-mono text-white">{user?.employee_id}</span>
           </div>
           <div className="flex justify-between py-2">
-            <span className="text-gray-500">Phone</span>
-            <span className="text-navy-900">{user?.phone || 'Not provided'}</span>
+            <span className="text-white/40">Phone</span>
+            <span className="text-white">{user?.phone || 'Not provided'}</span>
           </div>
         </div>
       </div>

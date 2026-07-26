@@ -47,11 +47,11 @@ export default function Notifications() {
   return (
     <div className="p-4 space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-navy-900 flex items-center gap-2">
-          <Bell size={22} className="text-amber-500" /> Notifications
+        <h1 className="text-xl font-bold text-white flex items-center gap-2">
+          <Bell size={22} className="text-amber-400" /> Notifications
         </h1>
         {unreadCount > 0 && (
-          <button onClick={markAllRead} className="text-sm text-amber-600 hover:underline flex items-center gap-1">
+          <button onClick={markAllRead} className="text-sm text-amber-400 hover:underline flex items-center gap-1">
             <CheckCheck size={16} /> Mark all read
           </button>
         )}
@@ -59,22 +59,22 @@ export default function Notifications() {
 
       <div className="space-y-1">
         {notifs.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
+          <div className="text-center py-12 text-white/30">
             <Bell size={32} className="mx-auto mb-2 opacity-30" />
             <p className="text-sm">No notifications</p>
           </div>
         ) : notifs.map(n => (
           <div key={n.id} onClick={() => !n.is_read && markRead(n.id)}
             className={`p-4 rounded-xl cursor-pointer transition-all ${
-              n.is_read ? 'bg-white' : 'bg-amber-50 border border-amber-100'
+              n.is_read ? 'bg-white/5' : 'bg-amber-500/10 border border-amber-500/20'
             }`}>
             <div className="flex gap-3">
               {!n.is_read && <div className="w-2 h-2 bg-amber-500 rounded-full mt-2 shrink-0" />}
               <div className="flex-1 min-w-0">
-                <p className={`text-sm ${n.is_read ? 'text-gray-500' : 'text-navy-900 font-medium'}`}>
+                <p className={`text-sm ${n.is_read ? 'text-white/40' : 'text-white font-medium'}`}>
                   {n.message}
                 </p>
-                <p className="text-xs text-gray-400 mt-1">{timeAgo(n.created_at)}</p>
+                <p className="text-xs text-white/30 mt-1">{timeAgo(n.created_at)}</p>
               </div>
             </div>
           </div>
