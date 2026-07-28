@@ -11,6 +11,7 @@ export default function Employees() {
   const [routes, setRoutes] = useState([]);
   const [showRoutes, setShowRoutes] = useState(false);
   const [routeForm, setRouteForm] = useState({ route_name: '', route_code: '', required_staff_count: 2 });
+  const [editingRoute, setEditingRoute] = useState(null);
 
   useEffect(() => { load(); loadRoutes(); }, []);
   useEffect(() => { load(); }, [search]);
@@ -103,12 +104,36 @@ export default function Employees() {
   async function handleRouteSubmit(e) {
     e.preventDefault();
     try {
-      await supabase.from('routes').insert(routeForm);
+      if (editingRoute) {
+        await supabase.from('routes').update(routeForm).eq('id', editingRoute.id);
+        setEditingRoute(null);
+      } else {
+        await supabase.from('routes').insert(routeForm);
+      }
       setRouteForm({ route_name: '', route_code: '', required_staff_count: 2 });
       loadRoutes();
     } catch (err) {
       alert(err.message || 'Failed to save route');
     }
+  }
+
+  async function deleteRoute(route) {
+    if (!window.confirm(`Are you sure you want to delete route ${route.route_name}?`)) return;
+    try {
+      await supabase.from('routes').delete().eq('id', route.id);
+      loadRoutes();
+    } catch (err) {
+      alert(err.message || 'Failed to delete route');
+    }
+  }
+
+  function openEditRoute(route) {
+    setEditingRoute(route);
+    setRouteForm({
+      route_name: route.route_name,
+      route_code: route.route_code || '',
+      required_staff_count: route.required_staff_count
+    });
   }
 
   return (
@@ -212,18 +237,38 @@ export default function Employees() {
               <input type="number" className="input" min="1" max="10"
                 value={routeForm.required_staff_count} onChange={e => setRouteForm({ ...routeForm, required_staff_count: parseInt(e.target.value) })} />
             </div>
-            <button type="submit" className="btn btn-primary"><Plus size={16} /> Add Route</button>
+            <div className="flex gap-2">
+              {editingRoute && (
+                <button type="button" onClick={() => { setEditingRoute(null); setRouteForm({ route_name: '', route_code: '', required_staff_count: 2 }); }} className="btn btn-ghost">Cancel</button>
+              )}
+              <button type="submit" className="btn btn-primary">
+                {editingRoute ? <Edit2 size={16} /> : <Plus size={16} />}
+                {editingRoute ? ' Update Route' : ' Add Route'}
+              </button>
+            </div>
           </form>
 
           <div className="table-container">
             <table className="data-table">
-              <thead><tr><th>Code</th><th>Route Name</th><th>Required Staff</th></tr></thead>
+              <thead><tr><th>Code</th><th>Route Name</th><th>Required Staff</th><th>Actions</th></tr></thead>
               <tbody>
-                {routes.map(r => (
+                {routes.length === 0 ? (
+                  <tr><td colSpan={4} className="text-center py-8 text-white/30">No routes found</td></tr>
+                ) : routes.map(r => (
                   <tr key={r.id}>
-                    <td className="font-mono font-medium">{r.route_code}</td>
+                    <td className="font-mono font-medium">{r.route_code || '—'}</td>
                     <td className="font-medium text-white">{r.route_name}</td>
                     <td>{r.required_staff_count}</td>
+                    <td>
+                      <div className="flex gap-2">
+                        <button onClick={() => openEditRoute(r)} className="p-1.5 rounded-lg hover:bg-white/5" title="Edit Route">
+                          <Edit2 size={15} className="text-white/40" />
+                        </button>
+                        <button onClick={() => deleteRoute(r)} className="p-1.5 rounded-lg hover:bg-danger-50 text-red-400" title="Delete Route">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabase';
 import { useAuth } from '../../context/AuthContext';
-import { FileText, Plus, Clock, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
+import { FileText, Plus, Clock, CheckCircle, XCircle, ArrowLeft, Mic } from 'lucide-react';
 
 export default function Leave() {
   const { user } = useAuth();
@@ -12,6 +12,35 @@ export default function Leave() {
   const [balance, setBalance] = useState(null);
   const [form, setForm] = useState({ leave_type: 'Casual Leave', start_date: '', end_date: '', reason: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+
+  const startListening = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert("Speech recognition is not supported in this browser.");
+      return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => setIsListening(true);
+    
+    recognition.onresult = (event) => {
+      const text = event.results[0][0].transcript;
+      setForm(prev => ({ ...prev, reason: prev.reason ? `${prev.reason} ${text}` : text }));
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error", event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => setIsListening(false);
+
+    recognition.start();
+  };
 
   const fetchLeaveData = async () => {
     if (!user) return;
@@ -133,7 +162,19 @@ export default function Leave() {
           )}
 
           <div>
-            <label className="label">Reason</label>
+            <div className="flex justify-between items-end mb-1">
+              <label className="label mb-0">Reason</label>
+              <button 
+                type="button" 
+                onClick={startListening} 
+                className={`text-xs flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors ${
+                  isListening ? 'bg-red-500/20 text-red-400 animate-pulse' : 'bg-white/5 text-white/50 hover:bg-white/10'
+                }`}
+              >
+                <Mic size={14} className={isListening ? 'animate-bounce' : ''} />
+                {isListening ? 'Listening...' : 'Voice Typing'}
+              </button>
+            </div>
             <textarea className="input min-h-[80px]" placeholder="Describe your reason..."
               value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} />
           </div>

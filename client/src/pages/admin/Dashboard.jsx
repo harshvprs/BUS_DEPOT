@@ -224,7 +224,7 @@ export default function Dashboard() {
       {/* Charts row */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Attendance Trend */}
-        <div className="card lg:col-span-2">
+        <div className="card lg:col-span-2 animate-stagger-2">
           <h3 className="font-semibold text-white mb-4">Weekly Attendance Trend</h3>
           {trend.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
@@ -242,7 +242,7 @@ export default function Dashboard() {
         </div>
 
         {/* Punctuality Pie */}
-        <div className="card">
+        <div className="card animate-stagger-3">
           <h3 className="font-semibold text-white mb-4">Punctuality Overview</h3>
           {pieData.length > 0 && pieData.some(d => d.value > 0) ? (
             <ResponsiveContainer width="100%" height={280}>
@@ -261,14 +261,14 @@ export default function Dashboard() {
       </div>
 
       {/* Attendance Heatmap */}
-      <div className="card">
+      <div className="card animate-stagger-4">
         <h3 className="font-semibold text-white mb-4">📊 Attendance Heatmap (Last 30 Days)</h3>
         <AttendanceHeatmap data={heatmapData} />
       </div>
 
       {/* Route Absence Rate */}
       {routeAbsence.length > 0 && (
-        <div className="card">
+        <div className="card animate-stagger-5">
           <h3 className="font-semibold text-white mb-4">🚌 Route Absence Rate (Last 30 Days)</h3>
           <ResponsiveContainer width="100%" height={Math.max(200, routeAbsence.length * 40)}>
             <BarChart data={routeAbsence} layout="vertical" margin={{ left: 20 }}>
@@ -290,7 +290,7 @@ export default function Dashboard() {
       )}
 
       {/* Employee Attendance Bar Chart */}
-      <div className="card">
+      <div className="card animate-stagger-5">
         <h3 className="font-semibold text-white mb-4">Attendance by Employee</h3>
         {empAtt.length > 0 ? (
           <ResponsiveContainer width="100%" height={Math.max(300, empAtt.length * 35)}>

@@ -14,7 +14,7 @@ export default function Attendance() {
     try {
       // Simulate generating a secure QR token since Express server is gone
       const token = btoa(JSON.stringify({ 
-        depot: 'Kempegowda', 
+        depot: 'Pandharpur', 
         date: new Date().toISOString().split('T')[0],
         nonce: Math.random()
       }));
@@ -51,7 +51,8 @@ export default function Attendance() {
             start_time: s.start_time,
             end_time: s.end_time,
             check_in_time: att.check_in_time,
-            attendance_status: att.status
+            attendance_status: att.status,
+            selfie_url: att.selfie_url
           };
         });
         setLiveData(formatted);

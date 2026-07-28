@@ -25,16 +25,38 @@ async function queueOfflineAttendance(record) {
   });
 }
 
+const DEPOT_LAT = 12.9716; // Default to Bangalore center, can be changed later
+const DEPOT_LNG = 77.5946;
+const ALLOWED_RADIUS_METERS = 100;
+
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // metres
+  const p1 = lat1 * Math.PI/180; 
+  const p2 = lat2 * Math.PI/180;
+  const dp = (lat2-lat1) * Math.PI/180;
+  const dl = (lon2-lon1) * Math.PI/180;
+  const a = Math.sin(dp/2) * Math.sin(dp/2) +
+            Math.cos(p1) * Math.cos(p2) *
+            Math.sin(dl/2) * Math.sin(dl/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
 export default function QRScan() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [status, setStatus] = useState('scanning'); // scanning | success | offline | error
+  const [status, setStatus] = useState('scanning'); // scanning | success | offline | error | location
   const [message, setMessage] = useState('');
   const [manualMode, setManualMode] = useState(false);
   const [manualCode, setManualCode] = useState('');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [demoMode, setDemoMode] = useState(false); // Bypass GPS for Hackathon demo
+  const [pendingToken, setPendingToken] = useState(null); // Holds QR token before selfie
+  const [uploading, setUploading] = useState(false);
   const scannerRef = useRef(null);
   const html5QrRef = useRef(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -87,21 +109,103 @@ export default function QRScan() {
       setMessage('Invalid QR code');
       return;
     }
+
+    // 1. Geofence Validation
+    if (!demoMode && navigator.geolocation) {
+      setStatus('location');
+      setMessage('Verifying GPS location...');
+      try {
+        const pos = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true, timeout: 10000, maximumAge: 0
+          });
+        });
+        const dist = getDistance(pos.coords.latitude, pos.coords.longitude, DEPOT_LAT, DEPOT_LNG);
+        if (dist > ALLOWED_RADIUS_METERS) {
+          setStatus('error');
+          setMessage(`Location Error: You are ${Math.round(dist)}m away from the Depot. Check-in denied.`);
+          return;
+        }
+      } catch (err) {
+        setStatus('error');
+        setMessage('Location access is required for check-in to prevent fraud.');
+        return;
+      }
+    }
+    // If we passed Geofencing, move to Selfie step instead of inserting immediately
+    setPendingToken(qrToken);
+    setStatus('selfie');
+    startSelfieCamera();
+  }
+
+  async function startSelfieCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error('Selfie camera error', err);
+      setStatus('error');
+      setMessage('Front camera access is required for verification.');
+    }
+  }
+
+  function stopSelfieCamera() {
+    if (videoRef.current && videoRef.current.srcObject) {
+      videoRef.current.srcObject.getTracks().forEach(t => t.stop());
+    }
+  }
+
+  async function handleCaptureSelfie() {
+    if (!videoRef.current || !canvasRef.current) return;
     
+    setUploading(true);
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    
+    stopSelfieCamera();
+    
+    canvas.toBlob(async (blob) => {
+      try {
+        const fileName = `${user.id}-${Date.now()}.jpg`;
+        const { error: uploadErr } = await supabase.storage
+          .from('attendance-selfies')
+          .upload(fileName, blob, { contentType: 'image/jpeg' });
+          
+        if (uploadErr) throw uploadErr;
+        
+        const { data: publicUrlData } = supabase.storage
+          .from('attendance-selfies')
+          .getPublicUrl(fileName);
+          
+        await finalizeCheckIn(publicUrlData.publicUrl);
+      } catch (err) {
+        console.error('Selfie upload failed:', err);
+        setStatus('error');
+        setMessage('Failed to upload selfie. Please try again.');
+      } finally {
+        setUploading(false);
+      }
+    }, 'image/jpeg', 0.8);
+  }
+
+  async function finalizeCheckIn(selfieUrl) {
     const today = new Date().toISOString().split('T')[0];
     const checkInTime = new Date();
-
-    // If offline, save locally and register sync
     if (!navigator.onLine) {
       try {
         await queueOfflineAttendance({
           employee_id: user.id,
           date: today,
           check_in_time: checkInTime.toISOString(),
-          qr_token: qrToken
+          qr_token: pendingToken,
+          selfie_url: selfieUrl
         });
-
-        // Register background sync
+        
         if ('serviceWorker' in navigator && 'SyncManager' in window) {
           const reg = await navigator.serviceWorker.ready;
           await reg.sync.register('sync-attendance');
@@ -151,7 +255,8 @@ export default function QRScan() {
           shift_id: shift?.id || null,
           check_in_time: checkInTime.toISOString(),
           date: today,
-          status: attStatus
+          status: attStatus,
+          selfie_url: selfieUrl
         })
         .select()
         .single();
@@ -210,6 +315,13 @@ export default function QRScan() {
                 </div>
                 <p className="text-white/40 text-center mb-2">Point your camera at the depot QR code</p>
                 {!isOnline && <p className="text-amber-400 text-xs text-center mb-4">📴 You're offline. Check-in will be saved locally.</p>}
+                
+                {/* Demo Mode Toggle */}
+                <label className="flex items-center justify-center gap-2 text-white/50 text-xs mb-4 cursor-pointer hover:text-white/80">
+                  <input type="checkbox" checked={demoMode} onChange={(e) => setDemoMode(e.target.checked)} className="rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500" />
+                  Demo Mode (Skip GPS check)
+                </label>
+
                 <button onClick={() => setManualMode(true)} className="text-amber-400 text-sm hover:underline flex items-center gap-2">
                   <Keyboard size={16} /> Enter code manually
                 </button>
@@ -221,6 +333,12 @@ export default function QRScan() {
                 <input type="text" className="input mb-4"
                   placeholder="Paste QR code here..." value={manualCode}
                   onChange={e => setManualCode(e.target.value)} autoFocus />
+                
+                <label className="flex items-center justify-center gap-2 text-white/50 text-xs mb-4 cursor-pointer hover:text-white/80">
+                  <input type="checkbox" checked={demoMode} onChange={(e) => setDemoMode(e.target.checked)} className="rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500" />
+                  Demo Mode (Skip GPS check)
+                </label>
+
                 <button type="submit" className="btn btn-primary w-full" disabled={!manualCode}>
                   Check In {!isOnline && '(Offline)'}
                 </button>
@@ -230,6 +348,41 @@ export default function QRScan() {
               </form>
             )}
           </>
+        )}
+
+        {status === 'location' && (
+          <div className="text-center animate-slide-up">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 glow-blue shadow-2xl">
+              <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+            </div>
+            <h2 className="text-white text-2xl font-bold mb-2">Locating...</h2>
+            <p className="text-blue-300 text-sm mb-8">{message}</p>
+          </div>
+        )}
+
+        {status === 'selfie' && (
+          <div className="text-center animate-slide-up w-full max-w-sm">
+            <h2 className="text-white text-2xl font-bold mb-2">Selfie Verification</h2>
+            <p className="text-white/40 text-sm mb-6">Please take a photo to verify your identity.</p>
+            
+            <div className="relative w-full aspect-[3/4] bg-black rounded-2xl overflow-hidden mb-6 border-2 border-white/10">
+              <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover transform -scale-x-100" />
+              <canvas ref={canvasRef} className="hidden" />
+              {uploading && (
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                  <div className="w-10 h-10 border-4 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </div>
+            
+            <button 
+              onClick={handleCaptureSelfie} 
+              disabled={uploading}
+              className="btn btn-primary w-full py-4 text-lg font-bold flex items-center justify-center gap-2"
+            >
+              <Camera size={24} /> {uploading ? 'Verifying...' : 'Take Selfie & Check In'}
+            </button>
+          </div>
         )}
 
         {status === 'success' && (

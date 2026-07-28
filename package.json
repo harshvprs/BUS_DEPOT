@@ -3,14 +3,7 @@
   "version": "1.0.0",
   "description": "Smart Workforce & Operations Management System for Bus Depots",
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "cd server && node index.js",
-    "client": "cd client && npm run dev",
-    "seed": "cd server && node seed.js",
-    "db:init": "cd server && node db-init.js"
-  },
-  "dependencies": {
-    "concurrently": "^9.0.0",
-    "dotenv": "^17.4.2"
+    "dev": "cd client && npm run dev",
+    "build": "cd client && npm run build"
   }
 }

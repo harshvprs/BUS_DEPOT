@@ -33,28 +33,34 @@ export default function Vehicles() {
     }
   }
 
-  async function toggleStatus(id, currentStatus) {
-    const next = currentStatus === 'active' ? 'maintenance' : currentStatus === 'maintenance' ? 'retired' : 'active';
-    await supabase.from('vehicles').update({ status: next }).eq('id', id);
-    load();
+  async function updateStatus(id, newStatus) {
+    try {
+      const { error } = await supabase.from('vehicles').update({ status: newStatus }).eq('id', id);
+      if (error) throw error;
+      load();
+    } catch (err) {
+      alert(err.message || 'Failed to update status');
+    }
   }
 
   const filtered = filter === 'all' ? vehicles : vehicles.filter(v => v.status === filter);
   const counts = {
     all: vehicles.length,
     active: vehicles.filter(v => v.status === 'active').length,
+    inside_depot: vehicles.filter(v => v.status === 'inside_depot').length,
     maintenance: vehicles.filter(v => v.status === 'maintenance').length,
-    retired: vehicles.filter(v => v.status === 'retired').length,
   };
 
   const statusIcon = (s) => {
     if (s === 'active') return <CheckCircle2 size={16} className="text-emerald-400" />;
+    if (s === 'inside_depot') return <Bus size={16} className="text-cyan-400" />;
     if (s === 'maintenance') return <Wrench size={16} className="text-amber-400" />;
     return <XCircle size={16} className="text-red-400" />;
   };
 
   const statusBadge = (s) => {
     if (s === 'active') return 'badge-present';
+    if (s === 'inside_depot') return 'badge-scheduled';
     if (s === 'maintenance') return 'badge-late';
     return 'badge-absent';
   };
@@ -75,9 +81,9 @@ export default function Vehicles() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total Fleet', value: counts.all, gradient: 'from-blue-500/20 to-indigo-500/20' },
-          { label: 'Active', value: counts.active, gradient: 'from-emerald-500/20 to-green-500/20' },
+          { label: 'On Route', value: counts.active, gradient: 'from-emerald-500/20 to-green-500/20' },
+          { label: 'Inside Depot', value: counts.inside_depot, gradient: 'from-cyan-500/20 to-teal-500/20' },
           { label: 'Maintenance', value: counts.maintenance, gradient: 'from-amber-500/20 to-orange-500/20' },
-          { label: 'Retired', value: counts.retired, gradient: 'from-red-500/20 to-pink-500/20' },
         ].map((c, i) => (
           <div key={i} className={`card bg-gradient-to-br ${c.gradient}`}>
             <p className="text-2xl font-bold text-white">{c.value}</p>
@@ -88,12 +94,12 @@ export default function Vehicles() {
 
       {/* Filter tabs */}
       <div className="flex gap-2">
-        {['all', 'active', 'maintenance', 'retired'].map(f => (
+        {['all', 'active', 'inside_depot', 'maintenance'].map(f => (
           <button key={f} onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all capitalize ${
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
               filter === f ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-white/40 hover:text-white/60 hover:bg-white/5'
             }`}>
-            {f} ({counts[f]})
+            {f === 'active' ? 'On Route' : f === 'inside_depot' ? 'Inside Depot' : f === 'all' ? 'All' : 'Maintenance'} ({counts[f]})
           </button>
         ))}
       </div>
@@ -122,15 +128,21 @@ export default function Vehicles() {
                 <td>{v.capacity} seats</td>
                 <td>
                   <span className={`badge ${statusBadge(v.status)} flex items-center gap-1 w-fit`}>
-                    {statusIcon(v.status)} {v.status}
+                    {statusIcon(v.status)} {v.status === 'active' ? 'On Route' : v.status === 'inside_depot' ? 'Inside Depot' : v.status === 'maintenance' ? 'Maintenance' : v.status}
                   </span>
                 </td>
                 <td className="text-white/30 text-xs">{new Date(v.created_at).toLocaleDateString('en-IN')}</td>
                 <td className="text-right">
-                  <button onClick={() => toggleStatus(v.id, v.status)}
-                    className="btn btn-ghost text-xs py-1 px-3">
-                    Cycle Status
-                  </button>
+                  <select 
+                    value={v.status}
+                    onChange={(e) => updateStatus(v.id, e.target.value)}
+                    className="input text-xs py-1.5 px-3 w-auto inline-block min-w-[120px] bg-white/5 border-white/10"
+                  >
+                    {v.status === 'retired' && <option value="retired" disabled>Retired</option>}
+                    <option value="active">On Route</option>
+                    <option value="inside_depot">Inside Depot</option>
+                    <option value="maintenance">Maintenance</option>
+                  </select>
                 </td>
               </tr>
             ))}

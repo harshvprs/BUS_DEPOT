@@ -75,7 +75,7 @@ export default function Login() {
           </form>
 
           <div className="mt-6 pt-4 border-t border-white/8 text-center">
-            <p className="text-xs text-white/30">Kempegowda Bus Depot, Bangalore</p>
+            <p className="text-xs text-white/30">Pandharpur Bus Depot, Maharashtra</p>
             <p className="text-xs text-white/20 mt-1">SIH 2024 · SKH050</p>
           </div>
         </div>

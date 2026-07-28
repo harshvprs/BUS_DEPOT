@@ -21,6 +21,10 @@ export function AuthProvider({ children }) {
         setLoading(false);
         setInitialLoad(false);
       }
+    }).catch(err => {
+      console.error('getSession error:', err);
+      setLoading(false);
+      setInitialLoad(false);
     });
 
     // Listen for changes on auth state

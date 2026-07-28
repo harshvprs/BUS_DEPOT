@@ -1,0 +1,9 @@
+{
+  "appId": "com.gramoora.depotflow",
+  "appName": "DepotFlow",
+  "webDir": "dist",
+  "server": {
+    "url": "https://busdepot.gramoora.com",
+    "cleartext": true
+  }
+}

@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { supabase } from './supabase';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminLayout from './components/AdminLayout';
 import EmployeeLayout from './components/EmployeeLayout';
@@ -22,6 +24,78 @@ import Settings from './pages/employee/Settings';
 import OpenShifts from './pages/employee/OpenShifts';
 
 export default function App() {
+  useEffect(() => {
+    const handleOnline = async () => {
+      console.log('App is back online. Checking for pending offline check-ins...');
+      try {
+        const db = await new Promise((resolve, reject) => {
+          const req = indexedDB.open('depotflow-offline', 1);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+
+        if (!db.objectStoreNames.contains('offline-attendance')) return;
+
+        const tx = db.transaction('offline-attendance', 'readwrite');
+        const store = tx.objectStore('offline-attendance');
+        const recordsReq = store.getAll();
+
+        recordsReq.onsuccess = async () => {
+          const records = recordsReq.result;
+          if (records.length === 0) return;
+
+          console.log(`Found ${records.length} offline records. Syncing...`);
+          for (const record of records) {
+            try {
+              // Get shift to determine status
+              const { data: shift } = await supabase
+                .from('shifts')
+                .select('*')
+                .eq('employee_id', record.employee_id)
+                .eq('date', record.date)
+                .single();
+                
+              let attStatus = 'present';
+              if (shift && shift.start_time) {
+                const shiftStart = new Date(`${record.date}T${shift.start_time}`);
+                if (new Date(record.check_in_time) > new Date(shiftStart.getTime() + 15 * 60000)) {
+                  attStatus = 'late';
+                }
+              }
+
+              // Insert to Supabase
+              const { error } = await supabase.from('attendance').insert({
+                employee_id: record.employee_id,
+                shift_id: shift?.id || null,
+                check_in_time: record.check_in_time,
+                date: record.date,
+                status: attStatus,
+                selfie_url: record.selfie_url
+              });
+
+              if (!error) {
+                // Delete from IndexedDB if successful
+                const delTx = db.transaction('offline-attendance', 'readwrite');
+                delTx.objectStore('offline-attendance').delete(record.id);
+                console.log('Synced record ID:', record.id);
+              }
+            } catch (err) {
+              console.error('Failed to sync offline record:', record, err);
+            }
+          }
+        };
+      } catch (err) {
+        console.error('Offline sync check failed:', err);
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    // Also trigger a check on app load just in case
+    if (navigator.onLine) handleOnline();
+
+    return () => window.removeEventListener('online', handleOnline);
+  }, []);
+
   return (
     <AuthProvider>
       <BrowserRouter>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
-import { CalendarClock, ChevronLeft, ChevronRight, Wand2, Upload, X, AlertTriangle } from 'lucide-react';
+import { CalendarClock, ChevronLeft, ChevronRight, Wand2, Upload, X, AlertTriangle, Trash2 } from 'lucide-react';
 
 function getMonday(d) {
   const date = new Date(d);
@@ -72,33 +72,63 @@ export default function Schedule() {
   function autoSuggest() {
     const newSuggestions = [];
     
-    // Basic mock algorithm for UI demo
-    for (const route of routes) {
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(new Date(weekStart).getTime() + i * 24 * 60 * 60 * 1000);
-        if (d.getDay() === 0) continue; // Sunday
-        const dateStr = d.toISOString().split('T')[0];
-        
+    // 1. Initialize shift count tracking for fairness
+    const empShiftCount = {};
+    employees.forEach(e => empShiftCount[e.id] = 0);
+    // Count already assigned shifts for this week
+    shifts.forEach(s => {
+      if (s.status !== 'missed' && s.status !== 'cancelled' && empShiftCount[s.employee_id] !== undefined) {
+        empShiftCount[s.employee_id]++;
+      }
+    });
+
+    // 2. Loop through each day first to balance day-by-day
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(new Date(weekStart).getTime() + i * 24 * 60 * 60 * 1000);
+      if (d.getDay() === 0) continue; // Skip Sunday
+      const dateStr = d.toISOString().split('T')[0];
+
+      // Then loop through each route for that day
+      for (const route of routes) {
         const assignedCount = shifts.filter(s => s.route_id === route.id && s.date === dateStr && s.status !== 'missed' && s.status !== 'cancelled').length;
         let needed = route.required_staff_count - assignedCount;
         
         if (needed > 0) {
-          // find employees not assigned on this day and not on leave
-          const available = employees.filter(emp => 
+          // Find available employees
+          const availableEmps = employees.filter(emp => 
             emp.is_active !== false && 
             !shifts.find(s => s.employee_id === emp.id && s.date === dateStr && s.status !== 'missed' && s.status !== 'cancelled') && 
             !newSuggestions.find(s => s.employee_id === emp.id && s.date === dateStr) &&
             !leaves.find(l => l.employee_id === emp.id && l.start_date <= dateStr && l.end_date >= dateStr)
           );
-          for (let j = 0; j < needed && j < available.length; j++) {
+          
+          // Sort by shift count (ascending) to distribute workloads fairly
+          availableEmps.sort((a, b) => empShiftCount[a.id] - empShiftCount[b.id]);
+
+          // Find available vehicles
+          const availableVehicles = vehicles.filter(v =>
+            !shifts.find(s => s.vehicle_id === v.id && s.date === dateStr && s.status !== 'missed' && s.status !== 'cancelled') &&
+            !newSuggestions.find(s => s.vehicle_id === v.id && s.date === dateStr)
+          );
+
+          // Assign up to the needed amount
+          let assigned = 0;
+          while (assigned < needed && availableEmps.length > 0 && availableVehicles.length > 0) {
+            const emp = availableEmps.shift();
+            const vehicle = availableVehicles.shift();
+            
             newSuggestions.push({
               route_id: route.id,
-              employee_id: available[j].id,
-              employee_name: available[j].name,
+              employee_id: emp.id,
+              employee_name: emp.name,
+              vehicle_id: vehicle.id,
               date: dateStr,
               start_time: '06:00',
               end_time: '14:00'
             });
+            
+            empShiftCount[emp.id]++;
+            assigned++;
           }
         }
       }
@@ -109,8 +139,12 @@ export default function Schedule() {
   async function publish() {
     if (suggestions.length === 0) return alert('Nothing to publish. Run Auto-Suggest first.');
     const toPublish = suggestions.map(s => ({
-      route_id: s.route_id, employee_id: s.employee_id,
-      date: s.date, start_time: s.start_time, end_time: s.end_time,
+      route_id: s.route_id, 
+      employee_id: s.employee_id,
+      vehicle_id: s.vehicle_id,
+      date: s.date, 
+      start_time: s.start_time, 
+      end_time: s.end_time,
     }));
     try {
       const { error } = await supabase.from('shifts').insert(toPublish);
@@ -140,6 +174,34 @@ export default function Schedule() {
       load();
     } catch (err) {
       alert(err.message || 'Assignment failed');
+    }
+  }
+
+  async function removeShift(shiftId) {
+    if (!window.confirm('Are you sure you want to remove this employee from this shift?')) return;
+    try {
+      const { error } = await supabase.from('shifts').delete().eq('id', shiftId);
+      if (error) throw error;
+      load();
+    } catch (err) {
+      alert(err.message || 'Failed to remove shift');
+    }
+  }
+
+  async function clearWeek() {
+    if (!window.confirm('Are you sure you want to delete ALL shifts and clear suggestions for this entire week? This cannot be undone.')) return;
+    try {
+      const endOfWeek = new Date(new Date(weekStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const { error } = await supabase.from('shifts')
+        .delete()
+        .gte('date', weekStart)
+        .lte('date', endOfWeek);
+        
+      if (error) throw error;
+      setSuggestions([]);
+      load();
+    } catch (err) {
+      alert(err.message || 'Failed to clear week');
     }
   }
 
@@ -187,6 +249,9 @@ export default function Schedule() {
           <h1 className="text-2xl font-bold text-white">Weekly Schedule</h1>
         </div>
         <div className="flex gap-2">
+          <button onClick={clearWeek} className="btn btn-danger text-sm" disabled={shifts.length === 0 && suggestions.length === 0}>
+            <Trash2 size={16} /> Clear Week
+          </button>
           <button onClick={autoSuggest} className="btn btn-outline text-sm">
             <Wand2 size={16} /> Auto-Suggest
           </button>
@@ -238,13 +303,13 @@ export default function Schedule() {
       {/* Schedule grid */}
       <div className="table-container bg-white/5 overflow-x-auto">
         <table className="w-full min-w-[800px] text-sm">
-          <thead className="bg-navy-50">
+          <thead className="bg-white/10 border-b border-white/10">
             <tr>
-              <th className="px-3 py-3 text-left font-semibold text-white/80 text-xs uppercase w-48">Route</th>
+              <th className="px-3 py-3 text-left font-semibold text-white/90 text-xs uppercase w-48">Route</th>
               {days.map(d => (
-                <th key={d.date} className="px-2 py-3 text-center font-semibold text-white/80 text-xs uppercase">
+                <th key={d.date} className="px-2 py-3 text-center font-semibold text-white/90 text-xs uppercase">
                   <div>{d.label}</div>
-                  <div className="text-navy-500 font-normal">{d.day}</div>
+                  <div className="text-amber-400 font-bold mt-0.5 text-sm">{d.day}</div>
                 </th>
               ))}
             </tr>
@@ -267,12 +332,19 @@ export default function Schedule() {
                       ) : (
                         <div className="space-y-1 min-h-[40px]">
                           {assigned.map((s, i) => (
-                            <div key={i} className="bg-success-50 text-emerald-300 text-xs px-2 py-1 rounded font-medium truncate">
+                            <div key={i} className="group relative bg-emerald-400 border border-emerald-500 text-emerald-950 text-xs px-2 py-1 rounded font-bold truncate hover:scale-105 hover:shadow-lg hover:shadow-emerald-500/20 transition-all cursor-default pr-6">
                               {s.employee_name?.split(' ')[0] || s.emp_code}
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); removeShift(s.id); }}
+                                className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 hover:text-red-600 text-emerald-800 p-0.5 rounded transition-all"
+                                title="Remove from shift"
+                              >
+                                <X size={12} strokeWidth={3} />
+                              </button>
                             </div>
                           ))}
                           {suggested.map((s, i) => (
-                            <div key={`s${i}`} className="bg-amber-100 text-amber-400 text-xs px-2 py-1 rounded font-medium truncate border border-amber-200 border-dashed">
+                            <div key={`s${i}`} className="bg-amber-400 text-amber-950 text-xs px-2 py-1 rounded font-bold truncate border border-amber-500 border-dashed hover:scale-105 hover:shadow-lg hover:shadow-amber-500/20 transition-all cursor-default">
                               {s.employee_name?.split(' ')[0]}
                             </div>
                           ))}

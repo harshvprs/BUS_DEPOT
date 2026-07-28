@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect } from 'react';
 
@@ -16,6 +16,7 @@ const tabs = [
 export default function EmployeeLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -64,7 +65,9 @@ export default function EmployeeLayout() {
 
       {/* Scrollable content */}
       <main className="flex-1 overflow-y-auto pb-20 relative z-10">
-        <Outlet />
+        <div key={location.pathname} className="animate-fade-in w-full h-full">
+          <Outlet />
+        </div>
       </main>
 
       {/* Bottom tab bar — frosted glass */}

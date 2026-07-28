@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect } from 'react';
 
@@ -18,6 +18,7 @@ const navItems = [
 export default function AdminLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifs, setShowNotifs] = useState(false);
   const [notifs, setNotifs] = useState([]);
@@ -124,7 +125,7 @@ export default function AdminLayout() {
         {/* Top bar — frosted glass */}
         <header className="h-16 glass-dark flex items-center justify-between px-6 shrink-0 border-b border-white/5" style={{ borderRadius: 0 }}>
           <div>
-            <h2 className="text-white font-semibold">Kempegowda Bus Depot</h2>
+            <h2 className="text-white font-semibold">Pandharpur Bus Depot</h2>
             <p className="text-white/40 text-xs">{new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
           </div>
 
@@ -173,7 +174,9 @@ export default function AdminLayout() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-6">
-          <Outlet />
+          <div key={location.pathname} className="animate-slide-up w-full h-full">
+            <Outlet />
+          </div>
         </div>
       </main>
     </div>
