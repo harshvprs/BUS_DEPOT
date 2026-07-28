@@ -22,6 +22,11 @@ import Leave from './pages/employee/Leave';
 import Notifications from './pages/employee/Notifications';
 import Settings from './pages/employee/Settings';
 import OpenShifts from './pages/employee/OpenShifts';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+
+import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
 
 export default function App() {
   useEffect(() => {
@@ -93,6 +98,44 @@ export default function App() {
     // Also trigger a check on app load just in case
     if (navigator.onLine) handleOnline();
 
+    const setupPushNotifications = async () => {
+      if (!Capacitor.isNativePlatform()) return;
+
+      try {
+        let permStatus = await PushNotifications.checkPermissions();
+        if (permStatus.receive === 'prompt') {
+          permStatus = await PushNotifications.requestPermissions();
+        }
+        
+        if (permStatus.receive !== 'granted') {
+          console.warn('User denied push notification permissions.');
+          return;
+        }
+
+        await PushNotifications.register();
+
+        PushNotifications.addListener('registration', (token) => {
+          console.log('Push registration success, token: ' + token.value);
+        });
+
+        PushNotifications.addListener('registrationError', (error) => {
+          console.error('Error on registration: ' + JSON.stringify(error));
+        });
+
+        PushNotifications.addListener('pushNotificationReceived', (notification) => {
+          console.log('Push received: ' + JSON.stringify(notification));
+        });
+
+        PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+          console.log('Push action performed: ' + JSON.stringify(notification));
+        });
+      } catch (err) {
+        console.error('Push notification setup failed:', err);
+      }
+    };
+
+    setupPushNotifications();
+
     return () => window.removeEventListener('online', handleOnline);
   }, []);
 
@@ -102,6 +145,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Admin routes */}
           <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}>

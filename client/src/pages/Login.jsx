@@ -58,7 +58,12 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="label">Password</label>
+              <label className="label flex justify-between">
+                <span>Password</span>
+                <button type="button" onClick={() => navigate('/forgot-password')} className="text-xs text-amber-400 hover:text-amber-300">
+                  Forgot Password?
+                </button>
+              </label>
               <div className="relative">
                 <input type={showPw ? 'text' : 'password'} className="input pr-10" placeholder="Enter password"
                   value={password} onChange={e => setPassword(e.target.value)} required />

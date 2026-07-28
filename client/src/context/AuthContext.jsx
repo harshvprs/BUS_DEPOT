@@ -109,6 +109,31 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const resetPassword = async (identifier) => {
+    let email = identifier;
+    if (!identifier.includes('@')) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('employee_id', identifier)
+        .single();
+      if (profile?.email) {
+        email = profile.email;
+      } else {
+        email = `${identifier.toLowerCase()}@busdepot.com`;
+      }
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) throw error;
+  };
+
+  const updatePassword = async (newPassword) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  };
+
   // Web Push Notifications via Supabase Realtime
   useEffect(() => {
     if (!user) return;
@@ -140,7 +165,7 @@ export function AuthProvider({ children }) {
   }, [user]);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, resetPassword, updatePassword, loading }}>
       {!initialLoad && children}
     </AuthContext.Provider>
   );
