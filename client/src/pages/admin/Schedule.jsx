@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../supabase';
 import { CalendarClock, ChevronLeft, ChevronRight, Wand2, Upload, X, AlertTriangle, Trash2 } from 'lucide-react';
 
@@ -62,11 +62,39 @@ export default function Schedule() {
     return { date: d.toISOString().split('T')[0], label: d.toLocaleDateString('en-IN', { weekday: 'short' }), day: d.getDate() };
   });
 
+  // Optimize getCell by precomputing the data by routeId and date
+  const cellDataMap = useMemo(() => {
+    const map = new Map();
+
+    // Pre-populate map
+    shifts.forEach(s => {
+      const key = `${s.route_id}_${s.date}`;
+      if (!map.has(key)) {
+        map.set(key, { assigned: [], suggested: [], hasMissed: false });
+      }
+      const data = map.get(key);
+      if (s.status === 'missed' || s.status === 'cancelled') {
+        data.hasMissed = true;
+      } else {
+        data.assigned.push(s);
+      }
+    });
+
+    suggestions.forEach(s => {
+      const key = `${s.route_id}_${s.date}`;
+      if (!map.has(key)) {
+        map.set(key, { assigned: [], suggested: [], hasMissed: false });
+      }
+      const data = map.get(key);
+      data.suggested.push(s);
+    });
+
+    return map;
+  }, [shifts, suggestions]);
+
   function getCell(routeId, date) {
-    const suggested = suggestions.filter(s => s.route_id === routeId && s.date === date);
-    const assigned = shifts.filter(s => s.route_id === routeId && s.date === date && s.status !== 'missed' && s.status !== 'cancelled');
-    const hasMissed = shifts.some(s => s.route_id === routeId && s.date === date && (s.status === 'missed' || s.status === 'cancelled'));
-    return { assigned, suggested, hasMissed };
+    const key = `${routeId}_${date}`;
+    return cellDataMap.get(key) || { assigned: [], suggested: [], hasMissed: false };
   }
 
   function autoSuggest() {
