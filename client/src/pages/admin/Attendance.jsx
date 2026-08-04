@@ -16,7 +16,8 @@ export default function Attendance() {
       const token = btoa(JSON.stringify({ 
         depot: 'Pandharpur', 
         date: new Date().toISOString().split('T')[0],
-        nonce: Math.random()
+        // 🛡️ Security Fix: Use crypto API for cryptographically secure nonce instead of predictable Math.random()
+        nonce: window.crypto.randomUUID()
       }));
       setQrData(token);
       
