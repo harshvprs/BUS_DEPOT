@@ -1,0 +1,4 @@
+## 2024-05-18 - [HIGH] User Enumeration in Password Reset Flow
+**Vulnerability:** User enumeration through specific error messages on the "Forgot Password" page. When an attacker entered an unregistered Employee ID or email, the API error ("User not found" or similar) was displayed directly in the UI.
+**Learning:** Returning specific error messages about account existence allows attackers to probe and identify valid usernames/emails, which is a precursor to targeted attacks like credential stuffing or phishing. Even when abstracting the backend call to BaaS platforms like Supabase, we must intercept these errors rather than passing them through to the user.
+**Prevention:** Always implement generic responses for authentication-related flows (login, password reset, account recovery). The message should be indistinguishable whether the account exists or not (e.g., "If an account exists, a link has been sent").
