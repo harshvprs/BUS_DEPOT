@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../supabase';
 import { useAuth } from '../../context/AuthContext';
 import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Clock } from 'lucide-react';
@@ -39,10 +39,10 @@ export default function MyShifts() {
     fetchShifts();
   }, [weekStart, user]);
 
-  const days = Array.from({ length: 7 }, (_, i) => {
+  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => {
     const d = new Date(new Date(weekStart).getTime() + i * 24 * 60 * 60 * 1000);
     return { date: d.toISOString().split('T')[0], dayName: d.toLocaleDateString('en-IN', { weekday: 'short' }), dayNum: d.getDate(), month: d.toLocaleDateString('en-IN', { month: 'short' }) };
-  });
+  }), [weekStart]);
 
   const today = new Date().toISOString().split('T')[0];
 
