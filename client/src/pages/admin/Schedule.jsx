@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../supabase';
 import { CalendarClock, ChevronLeft, ChevronRight, Wand2, Upload, X, AlertTriangle, Trash2 } from 'lucide-react';
 
@@ -57,10 +57,10 @@ export default function Schedule() {
     }
   }
 
-  const days = Array.from({ length: 7 }, (_, i) => {
+  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => {
     const d = new Date(new Date(weekStart).getTime() + i * 24 * 60 * 60 * 1000);
     return { date: d.toISOString().split('T')[0], label: d.toLocaleDateString('en-IN', { weekday: 'short' }), day: d.getDate() };
-  });
+  }), [weekStart]);
 
   function getCell(routeId, date) {
     const suggested = suggestions.filter(s => s.route_id === routeId && s.date === date);
