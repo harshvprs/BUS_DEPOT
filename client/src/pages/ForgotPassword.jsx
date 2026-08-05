@@ -6,21 +6,25 @@ import { Bus, ArrowLeft } from 'lucide-react';
 export default function ForgotPassword() {
   const [identifier, setIdentifier] = useState('');
   const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { resetPassword } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError('');
     setMessage('');
     setLoading(true);
     try {
       await resetPassword(identifier);
-      setMessage('A password reset link has been sent to your email.');
+      // Fallback in case of success
+      setMessage('If an account exists, a password reset link has been sent to the registered email.');
     } catch (err) {
-      setError(err.message || 'Failed to send reset link');
+      // 🛡️ Sentinel: Fix User Enumeration Vulnerability
+      // We don't expose error messages because it might allow an attacker
+      // to determine if a specific employee ID or email is registered.
+      // E.g., "User not found" vs generic error.
+      console.error('Password reset requested, handling securely.');
+      setMessage('If an account exists, a password reset link has been sent to the registered email.');
     } finally {
       setLoading(false);
     }
@@ -46,12 +50,6 @@ export default function ForgotPassword() {
           
           <h2 className="text-white font-semibold text-lg mb-1">Reset Password</h2>
           <p className="text-white/40 text-sm mb-6">Enter your Employee ID or Email to receive a reset link.</p>
-
-          {error && (
-            <div className="mb-4 p-3 rounded-xl text-sm animate-fade-in glow-danger" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#FCA5A5' }}>
-              {error}
-            </div>
-          )}
 
           {message && (
             <div className="mb-4 p-3 rounded-xl text-sm animate-fade-in glow-success" style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#6EE7B7' }}>
