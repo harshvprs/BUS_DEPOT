@@ -20,11 +20,20 @@ export default function Reports() {
         .gte('date', from)
         .lte('date', to);
         
+      // ⚡ Bolt: Optimize O(N²) loop to O(N) by grouping attendance records by employee_id first
+      const attendanceByEmployee = {};
+      (attendance || []).forEach(a => {
+        if (!attendanceByEmployee[a.employee_id]) {
+          attendanceByEmployee[a.employee_id] = { present: 0, late: 0, absent: 0 };
+        }
+        if (a.status === 'present') attendanceByEmployee[a.employee_id].present++;
+        else if (a.status === 'late') attendanceByEmployee[a.employee_id].late++;
+        else if (a.status === 'absent') attendanceByEmployee[a.employee_id].absent++;
+      });
+
       const empStats = (profiles || []).map(p => {
-        const pAtts = attendance?.filter(a => a.employee_id === p.id) || [];
-        const present = pAtts.filter(a => a.status === 'present').length;
-        const late = pAtts.filter(a => a.status === 'late').length;
-        const absent = pAtts.filter(a => a.status === 'absent').length;
+        const pAtts = attendanceByEmployee[p.id] || { present: 0, late: 0, absent: 0 };
+        const { present, late, absent } = pAtts;
         const total = present + late + absent;
         const percentage = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
         

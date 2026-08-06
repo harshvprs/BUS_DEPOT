@@ -152,9 +152,12 @@ export default function Dashboard() {
         setPunctuality(punctualityCounts);
 
         // Heatmap data
+        // ⚡ Bolt: Optimize O(M*N) loop to O(N) by using a hash map for profile lookups
+        const profileMap = {};
+        profiles.forEach(p => { profileMap[p.id] = p.name; });
+
         const heatmap = atts.filter(a => a.date >= thirtyDaysAgo).map(a => {
-          const profile = profiles.find(p => p.id === a.employee_id);
-          return { ...a, name: profile?.name || 'Unknown' };
+          return { ...a, name: profileMap[a.employee_id] || 'Unknown' };
         });
         setHeatmapData(heatmap);
 
