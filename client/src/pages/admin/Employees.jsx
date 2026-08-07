@@ -5,6 +5,7 @@ import { Users, Plus, Search, X, Edit2, ToggleLeft, ToggleRight, Trash2 } from '
 export default function Employees() {
   const [employees, setEmployees] = useState([]);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ name: '', employee_id: '', phone: '', email: '' });
@@ -14,13 +15,20 @@ export default function Employees() {
   const [editingRoute, setEditingRoute] = useState(null);
 
   useEffect(() => { load(); loadRoutes(); }, []);
-  useEffect(() => { load(); }, [search]);
+
+  // ⚡ Bolt: Added debounce to reduce unnecessary Supabase queries while typing
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => { load(); }, [debouncedSearch]);
 
   async function load() {
     try {
       let query = supabase.from('profiles').select('*').eq('role', 'employee');
-      if (search) {
-        query = query.or(`name.ilike.%${search}%,employee_id.ilike.%${search}%`);
+      if (debouncedSearch) {
+        query = query.or(`name.ilike.%${debouncedSearch}%,employee_id.ilike.%${debouncedSearch}%`);
       }
       const { data } = await query;
       setEmployees(data || []);
